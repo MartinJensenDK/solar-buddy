@@ -196,6 +196,9 @@
         }
       },
       "solar_surplus": { "name": "Soloverskud" },
+      "battery_soc": { "name": "Batteri ladetilstand" },
+      "battery_charge_power": { "name": "Batteri opladningseffekt" },
+      "battery_discharge_power": { "name": "Batteri afladningseffekt" },
       "available_ev_power": { "name": "Tilgængelig EV-effekt" },
       "recommended_ev_current": { "name": "Anbefalet ladestrøm" },
       "current_price": { "name": "Aktuel elpris" },

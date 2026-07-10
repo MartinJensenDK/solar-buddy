@@ -7,7 +7,7 @@ from homeassistant.helpers import entity_registry as er
 
 from custom_components.solar_buddy.const import DOMAIN, Priority, Strategy
 
-from .conftest import make_entry, set_full_states
+from .conftest import make_entry, set_basic_states, set_full_states
 
 
 def entity_id_for(hass: HomeAssistant, platform: str, entry, key: str) -> str:
@@ -150,3 +150,37 @@ async def test_all_expected_entities_exist(
             assert registry.async_get_entity_id(platform, DOMAIN, unique_id), (
                 f"missing {platform}.{key}"
             )
+
+
+async def test_battery_sensors_exist_with_battery(
+    hass: HomeAssistant, full_config_data
+) -> None:
+    entry = await setup_full(hass, full_config_data)
+
+    soc = hass.states.get(entity_id_for(hass, "sensor", entry, "battery_soc"))
+    assert float(soc.state) == 55.0
+
+    charge = hass.states.get(
+        entity_id_for(hass, "sensor", entry, "battery_charge_power")
+    )
+    assert float(charge.state) == 500.0  # positive_is_charging, +500 W
+
+    discharge = hass.states.get(
+        entity_id_for(hass, "sensor", entry, "battery_discharge_power")
+    )
+    assert float(discharge.state) == 0.0
+
+
+async def test_battery_sensors_absent_without_battery(
+    hass: HomeAssistant, basic_config_data
+) -> None:
+    set_basic_states(hass)
+    entry = make_entry(basic_config_data)
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    registry = er.async_get(hass)
+    for key in ("battery_soc", "battery_charge_power", "battery_discharge_power"):
+        unique_id = f"{entry.entry_id}_{key}"
+        assert registry.async_get_entity_id("sensor", DOMAIN, unique_id) is None

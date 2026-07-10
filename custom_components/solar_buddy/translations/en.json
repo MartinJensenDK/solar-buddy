@@ -196,6 +196,9 @@
         }
       },
       "solar_surplus": { "name": "Solar surplus" },
+      "battery_soc": { "name": "Battery state of charge" },
+      "battery_charge_power": { "name": "Battery charge power" },
+      "battery_discharge_power": { "name": "Battery discharge power" },
       "available_ev_power": { "name": "Available EV power" },
       "recommended_ev_current": { "name": "Recommended EV current" },
       "current_price": { "name": "Current electricity price" },

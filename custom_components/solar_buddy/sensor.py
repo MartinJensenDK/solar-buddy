@@ -13,7 +13,12 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import EntityCategory, UnitOfElectricCurrent, UnitOfPower
+from homeassistant.const import (
+    PERCENTAGE,
+    EntityCategory,
+    UnitOfElectricCurrent,
+    UnitOfPower,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
@@ -105,6 +110,38 @@ SENSOR_DESCRIPTIONS: tuple[SolarBuddySensorDescription, ...] = (
 )
 
 
+# Only created when the user enabled the house battery section.
+BATTERY_SENSOR_DESCRIPTIONS: tuple[SolarBuddySensorDescription, ...] = (
+    SolarBuddySensorDescription(
+        key="battery_soc",
+        translation_key="battery_soc",
+        device_class=SensorDeviceClass.BATTERY,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=PERCENTAGE,
+        suggested_display_precision=0,
+        value_fn=lambda data: data.snapshot.battery_soc,
+    ),
+    SolarBuddySensorDescription(
+        key="battery_charge_power",
+        translation_key="battery_charge_power",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        suggested_display_precision=0,
+        value_fn=lambda data: data.snapshot.battery_charge_power_w,
+    ),
+    SolarBuddySensorDescription(
+        key="battery_discharge_power",
+        translation_key="battery_discharge_power",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        suggested_display_precision=0,
+        value_fn=lambda data: data.snapshot.battery_discharge_power_w,
+    ),
+)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: SolarBuddyConfigEntry,
@@ -116,6 +153,11 @@ async def async_setup_entry(
         SolarBuddySensor(coordinator, description)
         for description in SENSOR_DESCRIPTIONS
     ]
+    if coordinator.battery_configured:
+        entities.extend(
+            SolarBuddySensor(coordinator, description)
+            for description in BATTERY_SENSOR_DESCRIPTIONS
+        )
     entities.append(SolarBuddyPriceSensor(coordinator))
     async_add_entities(entities)
 

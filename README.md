@@ -193,6 +193,7 @@ bilen når batteriet er under sin reserve-SoC.
 |------|---------|--------|
 | sensor | Status, Recommendation | Forklaring af den aktuelle beslutning (oversatte tilstande; talværdier som attributter) |
 | sensor | Solar surplus, Available EV power (W) | Effektbalancen |
+| sensor | Battery state of charge, Battery charge/discharge power | Batteriets tilstand (kun når batteri er konfigureret; effekt altid normaliseret til ≥ 0) |
 | sensor | Recommended EV current (A) | Anbefalet ladestrøm |
 | sensor | Current electricity price, Price level | Elpris med valuta/enhed fra kilden |
 | sensor | Next action, Last evaluation, Last command | Diagnostik (tidsstempler) |
