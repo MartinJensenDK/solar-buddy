@@ -1,6 +1,6 @@
 [project]
 name = "solar-buddy"
-version = "0.4.1"
+version = "0.4.2"
 description = "Home Assistant custom integration that optimizes local solar energy usage"
 readme = "README.md"
 license = { file = "LICENSE" }

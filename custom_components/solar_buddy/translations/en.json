@@ -203,7 +203,7 @@
       "recommended_ev_current": { "name": "Recommended EV current" },
       "current_price": { "name": "Current electricity price" },
       "price_level": {
-        "name": "Price level",
+        "name": "Current price level",
         "state": {
           "very_cheap": "Very cheap",
           "cheap": "Cheap",

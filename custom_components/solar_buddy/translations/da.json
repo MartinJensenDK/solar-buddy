@@ -203,7 +203,7 @@
       "recommended_ev_current": { "name": "Anbefalet ladestrøm" },
       "current_price": { "name": "Aktuel elpris" },
       "price_level": {
-        "name": "Prisniveau",
+        "name": "Aktuelt prisniveau",
         "state": {
           "very_cheap": "Meget billig",
           "cheap": "Billig",
