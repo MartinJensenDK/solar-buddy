@@ -5,7 +5,12 @@ from __future__ import annotations
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
-from custom_components.solar_buddy.const import DOMAIN, Priority, Strategy
+from custom_components.solar_buddy.const import (
+    CONF_GRID_EXPORT_SWITCH_ENTITY,
+    DOMAIN,
+    Priority,
+    Strategy,
+)
 
 from .conftest import make_entry, set_basic_states, set_full_states
 
@@ -184,3 +189,60 @@ async def test_battery_sensors_absent_without_battery(
     for key in ("battery_soc", "battery_charge_power", "battery_discharge_power"):
         unique_id = f"{entry.entry_id}_{key}"
         assert registry.async_get_entity_id("sensor", DOMAIN, unique_id) is None
+
+
+async def test_schedule_entities(hass: HomeAssistant, full_config_data) -> None:
+    entry = await setup_full(hass, full_config_data)
+    coordinator = entry.runtime_data
+
+    # All seven day switches exist and default to on.
+    monday = entity_id_for(hass, "switch", entry, "charge_allowed_mon")
+    assert hass.states.get(monday).state == "on"
+
+    await hass.services.async_call(
+        "switch", "turn_off", {"entity_id": monday}, blocking=True
+    )
+    assert "mon" not in coordinator.ev_allowed_days
+    assert hass.states.get(monday).state == "off"
+
+    start_id = entity_id_for(hass, "time", entry, "ev_schedule_start")
+    await hass.services.async_call(
+        "time", "set_value", {"entity_id": start_id, "time": "10:00:00"}, blocking=True
+    )
+    assert coordinator.ev_schedule_start == "10:00:00"
+    assert hass.states.get(start_id).state == "10:00:00"
+
+
+async def test_export_threshold_number(hass: HomeAssistant, full_config_data) -> None:
+    full_config_data[CONF_GRID_EXPORT_SWITCH_ENTITY] = "switch.grid_export"
+    hass.states.async_set("switch.grid_export", "on")
+    entry = await setup_full(hass, full_config_data)
+
+    number_id = entity_id_for(hass, "number", entry, "export_price_threshold")
+    assert float(hass.states.get(number_id).state) == 0.0
+
+    await hass.services.async_call(
+        "number", "set_value", {"entity_id": number_id, "value": 0.25}, blocking=True
+    )
+    assert entry.runtime_data.export_price_threshold == 0.25
+
+
+async def test_no_schedule_entities_without_ev(
+    hass: HomeAssistant, basic_config_data
+) -> None:
+    set_basic_states(hass)
+    entry = make_entry(basic_config_data)
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    registry = er.async_get(hass)
+    assert registry.async_get_entity_id(
+        "switch", DOMAIN, f"{entry.entry_id}_charge_allowed_mon"
+    ) is None
+    assert registry.async_get_entity_id(
+        "time", DOMAIN, f"{entry.entry_id}_ev_schedule_start"
+    ) is None
+    assert registry.async_get_entity_id(
+        "number", DOMAIN, f"{entry.entry_id}_export_price_threshold"
+    ) is None

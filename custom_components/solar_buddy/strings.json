@@ -136,11 +136,7 @@
           "manual_override_pause": "Manual override pause",
           "minimum_command_interval": "Minimum interval between commands",
           "data_stale_timeout": "Data stale timeout",
-          "evaluation_interval": "Evaluation interval",
-          "ev_allowed_days": "Days where EV charging is allowed",
-          "ev_schedule_start": "EV charging window start",
-          "ev_schedule_end": "EV charging window end",
-          "export_price_threshold": "Block export at or below this price"
+          "evaluation_interval": "Evaluation interval"
         }
       }
     },
@@ -148,8 +144,7 @@
       "min_above_max": "Minimum current cannot be higher than maximum current.",
       "cheap_above_expensive": "The cheap percentile must be lower than the expensive percentile.",
       "invalid_phases": "The number of phases must be 1 or 3.",
-      "invalid_voltage": "The voltage must be between 100 and 400 V.",
-      "no_days_selected": "Select at least one day where charging is allowed."
+      "invalid_voltage": "The voltage must be between 100 and 400 V."
     }
   },
   "selector": {
@@ -170,17 +165,6 @@
       "options": {
         "switch": "One on/off switch",
         "start_stop": "Separate start and stop entities"
-      }
-    },
-    "weekday": {
-      "options": {
-        "mon": "Monday",
-        "tue": "Tuesday",
-        "wed": "Wednesday",
-        "thu": "Thursday",
-        "fri": "Friday",
-        "sat": "Saturday",
-        "sun": "Sunday"
       }
     }
   },
@@ -278,6 +262,27 @@
     "switch": {
       "automatic_control": {
         "name": "Automatic control"
+      },
+      "charge_allowed_mon": {
+        "name": "Charging day 1 – Monday"
+      },
+      "charge_allowed_tue": {
+        "name": "Charging day 2 – Tuesday"
+      },
+      "charge_allowed_wed": {
+        "name": "Charging day 3 – Wednesday"
+      },
+      "charge_allowed_thu": {
+        "name": "Charging day 4 – Thursday"
+      },
+      "charge_allowed_fri": {
+        "name": "Charging day 5 – Friday"
+      },
+      "charge_allowed_sat": {
+        "name": "Charging day 6 – Saturday"
+      },
+      "charge_allowed_sun": {
+        "name": "Charging day 7 – Sunday"
       }
     },
     "select": {
@@ -305,6 +310,19 @@
       },
       "clear_manual_override": {
         "name": "Clear manual override"
+      }
+    },
+    "time": {
+      "ev_schedule_start": {
+        "name": "Charging window from"
+      },
+      "ev_schedule_end": {
+        "name": "Charging window to"
+      }
+    },
+    "number": {
+      "export_price_threshold": {
+        "name": "Export price threshold"
       }
     }
   }

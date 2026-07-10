@@ -139,23 +139,28 @@ Kommandoer dedupliceres mod entiteternes aktuelle tilstand og følger samme
 minimumsinterval, failsafe-betingelser og manuelle overstyring som
 EV-styringen. Er batteriets SoC ukendt, røres opladnings-kontakten ikke.
 
-## Ladetidsplan (v0.5.0)
+## Ladetidsplan
 
-Under *Konfigurér → Indstillinger* kan du vælge **hvilke ugedage** og **hvilket
-dagligt tidsrum** bilen må oplade i. Uden for planen oplades der aldrig
+Ladeplanen styres direkte fra Solar Buddy-enheden i HA (ikke via
+indstillinger): syv kontakter **Ladedag 1–7** (mandag–søndag) og to
+tidsentiteter **Ladetidsrum fra/til**. Uden for planen oplades der aldrig
 automatisk — heller ikke ved deadline-tvang — og en igangværende opladning
 stoppes. Fra = Til betyder hele døgnet; et tidsrum der krydser midnat (fx
-22:00–06:00) understøttes. Standard: alle dage, hele døgnet.
+22:00–06:00) understøttes. Standard: alle dage, hele døgnet. Valgene
+gendannes efter genstart. Entiteterne oprettes kun, når en biloplader er
+konfigureret.
 
-## Eksport-stop ved lav pris (v0.5.0)
+## Eksport-stop ved lav pris
 
-Vælger du en **eksport-kontakt** (switch/input_boolean, til = eksport tilladt)
-i pris-trinnet og sætter en **pristærskel** i indstillingerne, blokerer Solar
-Buddy eksport til nettet, når den aktuelle elpris er på eller under tærsklen,
-og tillader den igen, når prisen kommer over. Tærsklen angives i samme enhed
-som din elpris-sensor (ingen hardcodet valuta). Binary-sensoren *Eksport til
-nettet tilladt* viser den aktuelle beslutning. Uden kendt pris røres
-kontakten ikke, og kommandoer følger samme failsafe-regler som resten.
+Vælger du en **eksport-kontakt** (switch/input_boolean, til = eksport
+tilladt) i pris-trinnet, oprettes number-entiteten **Eksport-pristærskel**
+på Solar Buddy-enheden. Solar Buddy blokerer eksport til nettet, når den
+aktuelle elpris er på eller under tærsklen, og tillader den igen, når prisen
+kommer over. Tærsklen er i samme enhed som din elpris-sensor (ingen
+hardcodet valuta); standardværdien 0,00 blokerer ved nul- og negative
+priser. Binary-sensoren *Eksport til nettet tilladt* viser den aktuelle
+beslutning. Uden kendt pris røres kontakten ikke, og kommandoer følger samme
+failsafe-regler som resten.
 
 ## Energi Data Service
 

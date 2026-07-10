@@ -39,7 +39,6 @@ from .const import (
     CONF_DATA_STALE_TIMEOUT,
     CONF_ELECTRICITY_PRICE_ENTITY,
     CONF_EV_ADJUSTMENT_INTERVAL,
-    CONF_EV_ALLOWED_DAYS,
     CONF_EV_BATTERY_CAPACITY_KWH,
     CONF_EV_CABLE_CONNECTION_ENTITY,
     CONF_EV_CHARGER_CURRENT_ENTITY,
@@ -57,8 +56,6 @@ from .const import (
     CONF_EV_MIN_SOC_ENTITY,
     CONF_EV_PHASES,
     CONF_EV_POWER_RESERVE,
-    CONF_EV_SCHEDULE_END,
-    CONF_EV_SCHEDULE_START,
     CONF_EV_SOC_ENTITY,
     CONF_EV_START_DELAY,
     CONF_EV_STOP_DELAY,
@@ -66,7 +63,6 @@ from .const import (
     CONF_EV_VOLTAGE,
     CONF_EVALUATION_INTERVAL,
     CONF_EXPENSIVE_PRICE_PERCENTILE,
-    CONF_EXPORT_PRICE_THRESHOLD,
     CONF_GRID_EXPORT_SWITCH_ENTITY,
     CONF_HOUSE_CONSUMPTION_ENTITY,
     CONF_MANUAL_OVERRIDE_PAUSE,
@@ -84,8 +80,6 @@ from .const import (
     DEFAULT_EV_MIN_CURRENT,
     DEFAULT_EV_PHASES,
     DEFAULT_EV_POWER_RESERVE,
-    DEFAULT_EV_SCHEDULE_END,
-    DEFAULT_EV_SCHEDULE_START,
     DEFAULT_EV_START_DELAY,
     DEFAULT_EV_STOP_DELAY,
     DEFAULT_EV_TARGET_SOC,
@@ -100,7 +94,6 @@ from .const import (
     MIN_ALLOWED_EV_CURRENT,
     MIN_ALLOWED_EV_VOLTAGE,
     VALID_EV_PHASES,
-    WEEKDAYS,
     BatteryPowerMode,
     BatteryPowerSign,
     EvControlType,
@@ -195,8 +188,6 @@ def validate_options(user_input: dict[str, Any]) -> dict[str, str]:
     voltage = user_input.get(CONF_EV_VOLTAGE, DEFAULT_EV_VOLTAGE)
     if not MIN_ALLOWED_EV_VOLTAGE <= voltage <= MAX_ALLOWED_EV_VOLTAGE:
         errors[CONF_EV_VOLTAGE] = "invalid_voltage"
-    if not user_input.get(CONF_EV_ALLOWED_DAYS, list(WEEKDAYS)):
-        errors[CONF_EV_ALLOWED_DAYS] = "no_days_selected"
     return errors
 
 
@@ -461,31 +452,6 @@ def _options_schema(current: dict[str, Any]) -> vol.Schema:
                 CONF_EVALUATION_INTERVAL,
                 default=_default(CONF_EVALUATION_INTERVAL, DEFAULT_EVALUATION_INTERVAL),
             ): _number_selector(10, 3600, 5, "s"),
-            vol.Required(
-                CONF_EV_ALLOWED_DAYS,
-                default=_default(CONF_EV_ALLOWED_DAYS, list(WEEKDAYS)),
-            ): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=list(WEEKDAYS),
-                    translation_key="weekday",
-                    multiple=True,
-                    mode=selector.SelectSelectorMode.LIST,
-                )
-            ),
-            vol.Required(
-                CONF_EV_SCHEDULE_START,
-                default=_default(CONF_EV_SCHEDULE_START, DEFAULT_EV_SCHEDULE_START),
-            ): selector.TimeSelector(),
-            vol.Required(
-                CONF_EV_SCHEDULE_END,
-                default=_default(CONF_EV_SCHEDULE_END, DEFAULT_EV_SCHEDULE_END),
-            ): selector.TimeSelector(),
-            vol.Optional(
-                CONF_EXPORT_PRICE_THRESHOLD,
-                description={
-                    "suggested_value": current.get(CONF_EXPORT_PRICE_THRESHOLD)
-                },
-            ): _number_selector(-100, 100, 0.01),
         }
     )
 

@@ -48,8 +48,11 @@ from .const import (
     CONF_HOUSE_CONSUMPTION_ENTITY,
     CONF_SOLAR_PRODUCTION_ENTITY,
     DEFAULT_EV_CONNECTED_STATES,
+    DEFAULT_EV_SCHEDULE_END,
+    DEFAULT_EV_SCHEDULE_START,
     DEFAULT_EVALUATION_INTERVAL,
     DOMAIN,
+    WEEKDAYS,
     BatteryPowerMode,
     BatteryPowerSign,
     Priority,
@@ -122,6 +125,13 @@ class SolarBuddyCoordinator(DataUpdateCoordinator[SolarBuddyData]):
         self.manual_override_until: datetime | None = None
         self.last_command: datetime | None = None
 
+        # Schedule + export threshold, owned by their entities (switch/time/
+        # number platforms) which restore the user's last choice on restart.
+        self.ev_allowed_days: set[str] = set(WEEKDAYS)
+        self.ev_schedule_start: str = DEFAULT_EV_SCHEDULE_START
+        self.ev_schedule_end: str = DEFAULT_EV_SCHEDULE_END
+        self.export_price_threshold: float = 0.0
+
         self.actuators = ActuatorAdapter(hass, entry.entry_id)
         self._ev_entities = EvChargerEntities.from_entry_data(entry.data)
         self.ev_controller = EvController(
@@ -188,7 +198,7 @@ class SolarBuddyCoordinator(DataUpdateCoordinator[SolarBuddyData]):
 
     def current_settings(self) -> OptimizationSettings:
         """Snapshot of settings including runtime strategy/priority/control."""
-        return OptimizationSettings.from_options(
+        settings = OptimizationSettings.from_options(
             self.config_entry.options,
             strategy=self.strategy,
             priority=self.priority,
@@ -197,6 +207,14 @@ class SolarBuddyCoordinator(DataUpdateCoordinator[SolarBuddyData]):
             battery_configured=self.battery_configured,
             manual_override=self.manual_override_active,
         )
+        # These are owned by entities, not the options flow.
+        settings.ev_allowed_days = tuple(self.ev_allowed_days)
+        settings.ev_schedule_start = self.ev_schedule_start
+        settings.ev_schedule_end = self.ev_schedule_end
+        settings.export_price_threshold = (
+            self.export_price_threshold if self.export_configured else None
+        )
+        return settings
 
     @property
     def manual_override_active(self) -> bool:
@@ -229,6 +247,27 @@ class SolarBuddyCoordinator(DataUpdateCoordinator[SolarBuddyData]):
     async def async_clear_manual_override(self) -> None:
         """Clear a manual-override pause and re-evaluate."""
         self.manual_override_until = None
+        await self.async_request_refresh()
+
+    async def async_set_day_allowed(self, day: str, allowed: bool) -> None:
+        """Allow or block EV charging on a weekday."""
+        if allowed:
+            self.ev_allowed_days.add(day)
+        else:
+            self.ev_allowed_days.discard(day)
+        await self.async_request_refresh()
+
+    async def async_set_schedule_time(self, *, end: bool, value: str) -> None:
+        """Set the start or end of the daily charging window."""
+        if end:
+            self.ev_schedule_end = value
+        else:
+            self.ev_schedule_start = value
+        await self.async_request_refresh()
+
+    async def async_set_export_threshold(self, value: float) -> None:
+        """Set the price at or below which grid export is blocked."""
+        self.export_price_threshold = value
         await self.async_request_refresh()
 
     # ------------------------------------------------------------------

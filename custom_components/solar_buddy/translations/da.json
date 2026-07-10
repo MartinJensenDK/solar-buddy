@@ -136,11 +136,7 @@
           "manual_override_pause": "Pause ved manuel overstyring",
           "minimum_command_interval": "Minimumsinterval mellem kommandoer",
           "data_stale_timeout": "Tidsgrænse for forældede data",
-          "evaluation_interval": "Evalueringsinterval",
-          "ev_allowed_days": "Dage hvor bilen må oplade",
-          "ev_schedule_start": "Tilladt ladetidsrum fra",
-          "ev_schedule_end": "Tilladt ladetidsrum til",
-          "export_price_threshold": "Bloker eksport ved pris på eller under"
+          "evaluation_interval": "Evalueringsinterval"
         }
       }
     },
@@ -148,8 +144,7 @@
       "min_above_max": "Minimumstrømmen kan ikke være højere end maksimumstrømmen.",
       "cheap_above_expensive": "Billig-percentilen skal være lavere end dyr-percentilen.",
       "invalid_phases": "Antal faser skal være 1 eller 3.",
-      "invalid_voltage": "Spændingen skal være mellem 100 og 400 V.",
-      "no_days_selected": "Vælg mindst én dag hvor opladning er tilladt."
+      "invalid_voltage": "Spændingen skal være mellem 100 og 400 V."
     }
   },
   "selector": {
@@ -170,17 +165,6 @@
       "options": {
         "switch": "Én tænd/sluk-kontakt",
         "start_stop": "Separate start- og stop-entiteter"
-      }
-    },
-    "weekday": {
-      "options": {
-        "mon": "Mandag",
-        "tue": "Tirsdag",
-        "wed": "Onsdag",
-        "thu": "Torsdag",
-        "fri": "Fredag",
-        "sat": "Lørdag",
-        "sun": "Søndag"
       }
     }
   },
@@ -278,6 +262,27 @@
     "switch": {
       "automatic_control": {
         "name": "Automatisk styring"
+      },
+      "charge_allowed_mon": {
+        "name": "Ladedag 1 – mandag"
+      },
+      "charge_allowed_tue": {
+        "name": "Ladedag 2 – tirsdag"
+      },
+      "charge_allowed_wed": {
+        "name": "Ladedag 3 – onsdag"
+      },
+      "charge_allowed_thu": {
+        "name": "Ladedag 4 – torsdag"
+      },
+      "charge_allowed_fri": {
+        "name": "Ladedag 5 – fredag"
+      },
+      "charge_allowed_sat": {
+        "name": "Ladedag 6 – lørdag"
+      },
+      "charge_allowed_sun": {
+        "name": "Ladedag 7 – søndag"
       }
     },
     "select": {
@@ -305,6 +310,19 @@
       },
       "clear_manual_override": {
         "name": "Ryd manuel overstyring"
+      }
+    },
+    "time": {
+      "ev_schedule_start": {
+        "name": "Ladetidsrum fra"
+      },
+      "ev_schedule_end": {
+        "name": "Ladetidsrum til"
+      }
+    },
+    "number": {
+      "export_price_threshold": {
+        "name": "Eksport-pristærskel"
       }
     }
   }
