@@ -26,6 +26,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
 from .actuators import ActuatorAdapter
+from .battery_control import BatteryController
 from .const import (
     CONF_BATTERY_CHARGE_POWER_ENTITY,
     CONF_BATTERY_DISCHARGE_POWER_ENTITY,
@@ -124,12 +125,28 @@ class SolarBuddyCoordinator(DataUpdateCoordinator[SolarBuddyData]):
         self.ev_controller = EvController(
             self.actuators, self._ev_entities, self._read_plain_state
         )
+        self.battery_controller = BatteryController.from_entry_data(
+            self.actuators, entry.data, self._read_plain_state, self._read_options
+        )
         self._evaluation_lock = asyncio.Lock()
         self._availability: dict[str, bool] = {}
 
     def _read_plain_state(self, entity_id: str) -> str | None:
         state = self.hass.states.get(entity_id)
         return state.state if state is not None else None
+
+    def _read_options(self, entity_id: str) -> list[str] | None:
+        state = self.hass.states.get(entity_id)
+        if state is None:
+            return None
+        options = state.attributes.get("options")
+        return [str(option) for option in options] if options else None
+
+    def _controlled_entity_ids(self) -> set[str]:
+        return (
+            self._ev_entities.controlled_entity_ids()
+            | self.battery_controller.controlled_entity_ids()
+        )
 
     # ------------------------------------------------------------------
     # Configuration helpers
@@ -219,7 +236,7 @@ class SolarBuddyCoordinator(DataUpdateCoordinator[SolarBuddyData]):
             self.automatic_control
             and not self.manual_override_active
             and event.context.user_id is not None
-            and event.data["entity_id"] in self._ev_entities.controlled_entity_ids()
+            and event.data["entity_id"] in self._controlled_entity_ids()
         ):
             pause_min = self.current_settings().manual_override_pause_min
             if pause_min > 0:
@@ -357,39 +374,52 @@ class SolarBuddyCoordinator(DataUpdateCoordinator[SolarBuddyData]):
             return data
 
     async def _async_apply_control(self, data: SolarBuddyData) -> None:
-        """Run the EV controller when every safety condition is met.
+        """Run the EV and battery controllers when it is safe to do so.
 
-        Automatic control requires: the switch on, an active strategy, a
-        configured EV charger, fresh valid data, known cable status, and no
-        active manual override. Otherwise any pending action is dropped.
+        Both require: automatic control on, an active strategy, fresh valid
+        data, and no active manual override. EV control additionally needs a
+        configured charger and a known cable status; battery control needs
+        the battery section enabled. Otherwise pending actions are dropped.
         """
         settings = self.current_settings()
-        allowed = (
+        control_ok = (
             settings.automatic_control
             and settings.strategy is not Strategy.MONITOR_ONLY
-            and settings.ev_configured
             and data.decision.data_ready
-            and data.cable_known
             and not self.manual_override_active
         )
-        if not allowed:
+
+        ev_allowed = control_ok and settings.ev_configured and data.cable_known
+        if not ev_allowed:
             self.ev_controller.reset_pending()
-            return
-        try:
-            commanded, next_action_at = await self.ev_controller.apply(
-                data.decision, settings, dt_util.utcnow()
-            )
-        except HomeAssistantError as err:
-            _LOGGER.warning("EV control failed: %s", err)
-            return
-        # The optimizer may already have set next_action_at (e.g. the start
-        # of the next planned cheap window); the controller's timing wins
-        # only when it actually has one.
-        if next_action_at is not None:
-            data.decision.next_action_at = next_action_at
-        if commanded:
-            self.last_command = dt_util.utcnow()
-            data.last_command = self.last_command
+        else:
+            try:
+                commanded, next_action_at = await self.ev_controller.apply(
+                    data.decision, settings, dt_util.utcnow()
+                )
+            except HomeAssistantError as err:
+                _LOGGER.warning("EV control failed: %s", err)
+            else:
+                # The optimizer may already have set next_action_at (e.g. the
+                # next planned cheap window); the controller's timing wins
+                # only when it actually has one.
+                if next_action_at is not None:
+                    data.decision.next_action_at = next_action_at
+                if commanded:
+                    self.last_command = dt_util.utcnow()
+                    data.last_command = self.last_command
+
+        if control_ok and settings.battery_configured:
+            try:
+                battery_commanded = await self.battery_controller.apply(
+                    data.decision, settings, dt_util.utcnow()
+                )
+            except HomeAssistantError as err:
+                _LOGGER.warning("Battery control failed: %s", err)
+            else:
+                if battery_commanded:
+                    self.last_command = dt_util.utcnow()
+                    data.last_command = self.last_command
 
     def _evaluate(self) -> SolarBuddyData:
         settings = self.current_settings()

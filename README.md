@@ -119,6 +119,26 @@ viser *På pause (manuel overstyring)*, og knappen *Ryd manuel overstyring*
 ophæver pausen med det samme. Solar Buddys egne kommandoer genkendes via
 deres context og udløser aldrig pausen.
 
+## Batteristyring (v0.4.0)
+
+Har du valgt skrivbare batterientiteter (switch/input_boolean til opladning
+til/fra, number/input_number/select til ladegrænsen), styrer Solar Buddy dem
+efter deterministiske regler — read-only entiteter (sensor/binary_sensor)
+bruges kun til overvågning og skrives aldrig:
+
+- **Ved eller over mål-SoC:** opladning slås fra.
+- **Under reserve-SoC:** opladning slås til — sikkerhedsbund, der gælder
+  uanset prioritet.
+- **EV first, mens bilen (skal) lade(r):** batteriopladning slås fra, så hele
+  overskuddet går til bilen.
+- **Ellers under mål:** opladning slås til.
+- **Ladegrænsen** holdes på mål-SoC, så inverteren selv håndhæver målet. Er
+  grænsen en select, vælges den numeriske valgmulighed tættest på målet.
+
+Kommandoer dedupliceres mod entiteternes aktuelle tilstand og følger samme
+minimumsinterval, failsafe-betingelser og manuelle overstyring som
+EV-styringen. Er batteriets SoC ukendt, røres opladnings-kontakten ikke.
+
 ## Energi Data Service
 
 Solar Buddy har særlig understøttelse af
@@ -212,8 +232,8 @@ skift tilbage.
 
 ## Kendte begrænsninger
 
-- Batteristyring (skrivning til batteriets kontrol-entiteter) kommer i fase 4;
-  batteriet indgår indtil da kun i beregningerne.
+- Batteristyring kræver skrivbare entiteter (switch/number/select) — med
+  read-only entiteter overvåges batteriet kun.
 - Automatisk EV-styring kræver en konfigureret kabelstatus-entitet — uden
   kendt kabelstatus sendes aldrig kommandoer (failsafe).
 - Én elbil pr. installation (multi-EV er planlagt).

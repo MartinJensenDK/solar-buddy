@@ -251,6 +251,9 @@ class OptimizationDecision:
     should_start_ev: bool = False
     should_stop_ev: bool = False
     should_change_ev_current: bool = False
+    # Battery: None means "leave the entity untouched".
+    should_enable_battery_charging: bool | None = None
+    battery_charge_limit_pct: float | None = None
     price_level: str | None = None
     next_action_at: datetime | None = None
     data_ready: bool = False

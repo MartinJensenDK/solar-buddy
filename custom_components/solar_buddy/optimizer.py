@@ -232,6 +232,69 @@ def evaluate(
     ``data_ready`` reflects whether the mandatory power sensors delivered
     valid, fresh values; when False no control action is ever proposed.
     """
+    decision = _evaluate_ev(
+        snapshot,
+        price_intervals,
+        settings,
+        data_ready=data_ready,
+        stale=stale,
+        local_tz=local_tz,
+    )
+    _apply_battery_decision(decision, snapshot, settings)
+    return decision
+
+
+def _apply_battery_decision(
+    decision: OptimizationDecision,
+    snapshot: EnergySnapshot,
+    settings: OptimizationSettings,
+) -> None:
+    """Fill the battery parts of a decision (charging on/off + limit).
+
+    Deterministic rules, evaluated after the EV decision so the EV/battery
+    priority can be honored:
+
+    * at or above the target SoC: charging off,
+    * below the reserve SoC: charging on (safety floor, beats priority),
+    * ``ev_first`` while the EV is actively (about to be) charging: charging
+      off, so the whole surplus goes to the car,
+    * otherwise below target: charging on.
+
+    The charge limit is kept at the configured target SoC so the inverter
+    enforces the target itself. Unknown SoC leaves the toggle untouched.
+    """
+    if not settings.battery_configured or not decision.data_ready:
+        return
+    decision.battery_charge_limit_pct = settings.battery_target_soc
+
+    soc = snapshot.battery_soc
+    if soc is None:
+        return
+    if soc >= settings.battery_target_soc:
+        decision.should_enable_battery_charging = False
+        return
+    if soc < settings.battery_reserve_soc:
+        decision.should_enable_battery_charging = True
+        return
+    ev_active = decision.should_start_ev or (
+        snapshot.ev_charging and not decision.should_stop_ev
+    )
+    if settings.priority is Priority.EV_FIRST and ev_active:
+        decision.should_enable_battery_charging = False
+        return
+    decision.should_enable_battery_charging = True
+
+
+def _evaluate_ev(
+    snapshot: EnergySnapshot,
+    price_intervals: list[PriceInterval],
+    settings: OptimizationSettings,
+    *,
+    data_ready: bool,
+    stale: bool = False,
+    local_tz: tzinfo | None = None,
+) -> OptimizationDecision:
+    """The EV/surplus part of the evaluation."""
     surplus_w = snapshot.solar_power_w - snapshot.house_consumption_w
     status = _status_for(settings, data_ready, stale)
 
