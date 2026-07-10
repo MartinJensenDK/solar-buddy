@@ -139,6 +139,24 @@ Kommandoer dedupliceres mod entiteternes aktuelle tilstand og følger samme
 minimumsinterval, failsafe-betingelser og manuelle overstyring som
 EV-styringen. Er batteriets SoC ukendt, røres opladnings-kontakten ikke.
 
+## Ladetidsplan (v0.5.0)
+
+Under *Konfigurér → Indstillinger* kan du vælge **hvilke ugedage** og **hvilket
+dagligt tidsrum** bilen må oplade i. Uden for planen oplades der aldrig
+automatisk — heller ikke ved deadline-tvang — og en igangværende opladning
+stoppes. Fra = Til betyder hele døgnet; et tidsrum der krydser midnat (fx
+22:00–06:00) understøttes. Standard: alle dage, hele døgnet.
+
+## Eksport-stop ved lav pris (v0.5.0)
+
+Vælger du en **eksport-kontakt** (switch/input_boolean, til = eksport tilladt)
+i pris-trinnet og sætter en **pristærskel** i indstillingerne, blokerer Solar
+Buddy eksport til nettet, når den aktuelle elpris er på eller under tærsklen,
+og tillader den igen, når prisen kommer over. Tærsklen angives i samme enhed
+som din elpris-sensor (ingen hardcodet valuta). Binary-sensoren *Eksport til
+nettet tilladt* viser den aktuelle beslutning. Uden kendt pris røres
+kontakten ikke, og kommandoer følger samme failsafe-regler som resten.
+
 ## Energi Data Service
 
 Solar Buddy har særlig understøttelse af

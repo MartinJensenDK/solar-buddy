@@ -17,6 +17,7 @@ from .const import (
     CONF_CHEAP_PRICE_PERCENTILE,
     CONF_DATA_STALE_TIMEOUT,
     CONF_EV_ADJUSTMENT_INTERVAL,
+    CONF_EV_ALLOWED_DAYS,
     CONF_EV_BATTERY_CAPACITY_KWH,
     CONF_EV_CHARGING_EFFICIENCY,
     CONF_EV_CURRENT_STEP,
@@ -25,12 +26,15 @@ from .const import (
     CONF_EV_MIN_CURRENT,
     CONF_EV_PHASES,
     CONF_EV_POWER_RESERVE,
+    CONF_EV_SCHEDULE_END,
+    CONF_EV_SCHEDULE_START,
     CONF_EV_START_DELAY,
     CONF_EV_STOP_DELAY,
     CONF_EV_TARGET_SOC,
     CONF_EV_VOLTAGE,
     CONF_EVALUATION_INTERVAL,
     CONF_EXPENSIVE_PRICE_PERCENTILE,
+    CONF_EXPORT_PRICE_THRESHOLD,
     CONF_MANUAL_OVERRIDE_PAUSE,
     CONF_MINIMUM_COMMAND_INTERVAL,
     DEFAULT_BATTERY_RESERVE_SOC,
@@ -44,6 +48,8 @@ from .const import (
     DEFAULT_EV_MIN_CURRENT,
     DEFAULT_EV_PHASES,
     DEFAULT_EV_POWER_RESERVE,
+    DEFAULT_EV_SCHEDULE_END,
+    DEFAULT_EV_SCHEDULE_START,
     DEFAULT_EV_START_DELAY,
     DEFAULT_EV_STOP_DELAY,
     DEFAULT_EV_TARGET_SOC,
@@ -52,6 +58,7 @@ from .const import (
     DEFAULT_EXPENSIVE_PRICE_PERCENTILE,
     DEFAULT_MANUAL_OVERRIDE_PAUSE,
     DEFAULT_MINIMUM_COMMAND_INTERVAL,
+    WEEKDAYS,
     CommandAction,
     Priority,
     Recommendation,
@@ -135,6 +142,11 @@ class OptimizationSettings:
     cheap_price_percentile: float = DEFAULT_CHEAP_PRICE_PERCENTILE
     expensive_price_percentile: float = DEFAULT_EXPENSIVE_PRICE_PERCENTILE
 
+    ev_allowed_days: tuple[str, ...] = WEEKDAYS
+    ev_schedule_start: str = DEFAULT_EV_SCHEDULE_START
+    ev_schedule_end: str = DEFAULT_EV_SCHEDULE_END
+    export_price_threshold: float | None = None
+
     manual_override_pause_min: int = DEFAULT_MANUAL_OVERRIDE_PAUSE
     minimum_command_interval_s: int = DEFAULT_MINIMUM_COMMAND_INTERVAL
     data_stale_timeout_s: int = DEFAULT_DATA_STALE_TIMEOUT
@@ -209,6 +221,18 @@ class OptimizationSettings:
                     DEFAULT_EXPENSIVE_PRICE_PERCENTILE,
                 )
             ),
+            ev_allowed_days=tuple(options.get(CONF_EV_ALLOWED_DAYS, WEEKDAYS)),
+            ev_schedule_start=str(
+                options.get(CONF_EV_SCHEDULE_START, DEFAULT_EV_SCHEDULE_START)
+            ),
+            ev_schedule_end=str(
+                options.get(CONF_EV_SCHEDULE_END, DEFAULT_EV_SCHEDULE_END)
+            ),
+            export_price_threshold=(
+                float(options[CONF_EXPORT_PRICE_THRESHOLD])
+                if options.get(CONF_EXPORT_PRICE_THRESHOLD) is not None
+                else None
+            ),
             manual_override_pause_min=int(
                 options.get(CONF_MANUAL_OVERRIDE_PAUSE, DEFAULT_MANUAL_OVERRIDE_PAUSE)
             ),
@@ -251,9 +275,10 @@ class OptimizationDecision:
     should_start_ev: bool = False
     should_stop_ev: bool = False
     should_change_ev_current: bool = False
-    # Battery: None means "leave the entity untouched".
+    # Battery/export: None means "leave the entity untouched".
     should_enable_battery_charging: bool | None = None
     battery_charge_limit_pct: float | None = None
+    should_allow_export: bool | None = None
     price_level: str | None = None
     next_action_at: datetime | None = None
     data_ready: bool = False

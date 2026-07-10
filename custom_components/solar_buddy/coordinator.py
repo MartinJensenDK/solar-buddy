@@ -44,6 +44,7 @@ from .const import (
     CONF_EV_MIN_SOC_ENTITY,
     CONF_EV_SOC_ENTITY,
     CONF_EVALUATION_INTERVAL,
+    CONF_GRID_EXPORT_SWITCH_ENTITY,
     CONF_HOUSE_CONSUMPTION_ENTITY,
     CONF_SOLAR_PRODUCTION_ENTITY,
     DEFAULT_EV_CONNECTED_STATES,
@@ -55,6 +56,7 @@ from .const import (
     Strategy,
 )
 from .ev_control import EvChargerEntities, EvController
+from .export_control import ExportController
 from .models import (
     EnergySnapshot,
     OptimizationDecision,
@@ -128,6 +130,11 @@ class SolarBuddyCoordinator(DataUpdateCoordinator[SolarBuddyData]):
         self.battery_controller = BatteryController.from_entry_data(
             self.actuators, entry.data, self._read_plain_state, self._read_options
         )
+        self.export_controller = ExportController(
+            self.actuators,
+            entry.data.get(CONF_GRID_EXPORT_SWITCH_ENTITY),
+            self._read_plain_state,
+        )
         self._evaluation_lock = asyncio.Lock()
         self._availability: dict[str, bool] = {}
 
@@ -146,7 +153,13 @@ class SolarBuddyCoordinator(DataUpdateCoordinator[SolarBuddyData]):
         return (
             self._ev_entities.controlled_entity_ids()
             | self.battery_controller.controlled_entity_ids()
+            | self.export_controller.controlled_entity_ids()
         )
+
+    @property
+    def export_configured(self) -> bool:
+        """True when a grid export switch is configured."""
+        return bool(self.config_entry.data.get(CONF_GRID_EXPORT_SWITCH_ENTITY))
 
     # ------------------------------------------------------------------
     # Configuration helpers
@@ -418,6 +431,18 @@ class SolarBuddyCoordinator(DataUpdateCoordinator[SolarBuddyData]):
                 _LOGGER.warning("Battery control failed: %s", err)
             else:
                 if battery_commanded:
+                    self.last_command = dt_util.utcnow()
+                    data.last_command = self.last_command
+
+        if control_ok and self.export_configured:
+            try:
+                export_commanded = await self.export_controller.apply(
+                    data.decision, settings, dt_util.utcnow()
+                )
+            except HomeAssistantError as err:
+                _LOGGER.warning("Export control failed: %s", err)
+            else:
+                if export_commanded:
                     self.last_command = dt_util.utcnow()
                     data.last_command = self.last_command
 

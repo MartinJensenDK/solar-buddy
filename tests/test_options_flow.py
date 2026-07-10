@@ -7,6 +7,7 @@ from homeassistant.data_entry_flow import FlowResultType
 
 from custom_components.solar_buddy.const import (
     CONF_BATTERY_RESERVE_SOC,
+    CONF_EV_ALLOWED_DAYS,
     CONF_BATTERY_TARGET_SOC,
     CONF_CHEAP_PRICE_PERCENTILE,
     CONF_DATA_STALE_TIMEOUT,
@@ -114,3 +115,16 @@ async def test_options_flow_invalid_phases(
         result["flow_id"], VALID_OPTIONS
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
+
+
+async def test_options_flow_requires_at_least_one_day(
+    hass: HomeAssistant, basic_config_data
+) -> None:
+    entry = make_entry(basic_config_data)
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {**VALID_OPTIONS, CONF_EV_ALLOWED_DAYS: []}
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"][CONF_EV_ALLOWED_DAYS] == "no_days_selected"

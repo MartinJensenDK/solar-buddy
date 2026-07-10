@@ -40,6 +40,8 @@ CONF_EV_SOC_ENTITY: Final = "ev_soc_entity"
 CONF_EV_MIN_SOC_ENTITY: Final = "ev_min_soc_entity"
 
 CONF_ELECTRICITY_PRICE_ENTITY: Final = "electricity_price_entity"
+# Optional switch that allows/blocks exporting surplus to the grid.
+CONF_GRID_EXPORT_SWITCH_ENTITY: Final = "grid_export_switch_entity"
 
 # ---------------------------------------------------------------------------
 # Options keys (behavior settings in the options flow)
@@ -66,6 +68,20 @@ CONF_MANUAL_OVERRIDE_PAUSE: Final = "manual_override_pause"
 CONF_MINIMUM_COMMAND_INTERVAL: Final = "minimum_command_interval"
 CONF_DATA_STALE_TIMEOUT: Final = "data_stale_timeout"
 CONF_EVALUATION_INTERVAL: Final = "evaluation_interval"
+
+# EV charging schedule: days and a daily time window where charging may run.
+CONF_EV_ALLOWED_DAYS: Final = "ev_allowed_days"
+CONF_EV_SCHEDULE_START: Final = "ev_schedule_start"
+CONF_EV_SCHEDULE_END: Final = "ev_schedule_end"
+
+# Export is blocked while the current price is at or below this threshold
+# (in the price sensor's own unit; no hardcoded currency).
+CONF_EXPORT_PRICE_THRESHOLD: Final = "export_price_threshold"
+
+WEEKDAYS: Final = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+# Start == end means the whole day is allowed.
+DEFAULT_EV_SCHEDULE_START: Final = "00:00:00"
+DEFAULT_EV_SCHEDULE_END: Final = "00:00:00"
 
 # ---------------------------------------------------------------------------
 # Defaults
@@ -184,6 +200,7 @@ class Recommendation(StrEnum):
     GRID_CHARGE_PLANNED = "grid_charge_planned"
     GRID_CHARGE_DEADLINE = "grid_charge_deadline"
     EV_BLOCKED_EXPENSIVE = "ev_blocked_expensive"
+    EV_BLOCKED_SCHEDULE = "ev_blocked_schedule"
     NO_SURPLUS = "no_surplus"
     SURPLUS_BELOW_MINIMUM = "surplus_below_minimum"
 

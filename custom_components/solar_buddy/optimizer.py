@@ -241,7 +241,59 @@ def evaluate(
         local_tz=local_tz,
     )
     _apply_battery_decision(decision, snapshot, settings)
+    _apply_export_decision(decision, snapshot, settings)
     return decision
+
+
+def charging_allowed_now(
+    now: datetime,
+    allowed_days: tuple[str, ...],
+    window_start: str,
+    window_end: str,
+    local_tz: tzinfo | None,
+) -> bool:
+    """Is EV charging allowed by the user's schedule right now?
+
+    ``now`` is converted to local time; the weekday must be among
+    ``allowed_days`` and the local time inside [start, end). Start == end
+    means the whole day; start > end means the window wraps past midnight
+    (the weekday check applies to the current local day). Unparsable times
+    fail open (allowed) so a broken option never blocks charging silently.
+    """
+    local_now = now.astimezone(local_tz) if local_tz else now
+    weekday_keys = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+    if weekday_keys[local_now.weekday()] not in allowed_days:
+        return False
+    try:
+        start = time.fromisoformat(window_start)
+        end = time.fromisoformat(window_end)
+    except ValueError:
+        return True
+    if start == end:
+        return True
+    current = local_now.time()
+    if start < end:
+        return start <= current < end
+    return current >= start or current < end
+
+
+def _apply_export_decision(
+    decision: OptimizationDecision,
+    snapshot: EnergySnapshot,
+    settings: OptimizationSettings,
+) -> None:
+    """Block grid export while the price is at or below the threshold.
+
+    The threshold is in the price sensor's own unit (currency-agnostic).
+    With no threshold or no known price, the export entity is left alone.
+    """
+    if not decision.data_ready or settings.export_price_threshold is None:
+        return
+    if snapshot.current_price is None:
+        return
+    decision.should_allow_export = (
+        snapshot.current_price > settings.export_price_threshold
+    )
 
 
 def _apply_battery_decision(
@@ -329,6 +381,20 @@ def _evaluate_ev(
 
     if not snapshot.ev_connected:
         decision.recommendation = Recommendation.EV_NOT_CONNECTED
+        decision.should_stop_ev = snapshot.ev_charging
+        decision.recommended_ev_current_a = 0.0
+        return decision
+
+    # The user's charging schedule beats everything, including grid-charge
+    # deadlines: outside the allowed days/window the EV never charges.
+    if not charging_allowed_now(
+        snapshot.timestamp,
+        settings.ev_allowed_days,
+        settings.ev_schedule_start,
+        settings.ev_schedule_end,
+        local_tz,
+    ):
+        decision.recommendation = Recommendation.EV_BLOCKED_SCHEDULE
         decision.should_stop_ev = snapshot.ev_charging
         decision.recommended_ev_current_a = 0.0
         return decision

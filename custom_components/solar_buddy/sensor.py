@@ -15,7 +15,6 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import (
     PERCENTAGE,
-    EntityCategory,
     UnitOfElectricCurrent,
     UnitOfPower,
 )
@@ -86,25 +85,24 @@ SENSOR_DESCRIPTIONS: tuple[SolarBuddySensorDescription, ...] = (
         options=[level.value for level in PriceLevel],
         value_fn=lambda data: data.decision.price_level or PriceLevel.UNKNOWN.value,
     ),
+    # No entity_category: the user wants every entity visible in the main
+    # sections of the integration/device page, not tucked under Diagnostic.
     SolarBuddySensorDescription(
         key="next_action",
         translation_key="next_action",
         device_class=SensorDeviceClass.TIMESTAMP,
-        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.decision.next_action_at,
     ),
     SolarBuddySensorDescription(
         key="last_evaluation",
         translation_key="last_evaluation",
         device_class=SensorDeviceClass.TIMESTAMP,
-        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.last_evaluation,
     ),
     SolarBuddySensorDescription(
         key="last_command",
         translation_key="last_command",
         device_class=SensorDeviceClass.TIMESTAMP,
-        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.last_command,
     ),
 )

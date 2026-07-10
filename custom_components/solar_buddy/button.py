@@ -6,7 +6,6 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
-from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -30,7 +29,6 @@ BUTTON_DESCRIPTIONS: tuple[SolarBuddyButtonDescription, ...] = (
     SolarBuddyButtonDescription(
         key="clear_manual_override",
         translation_key="clear_manual_override",
-        entity_category=EntityCategory.CONFIG,
         press_fn=lambda coordinator: coordinator.async_clear_manual_override(),
     ),
 )

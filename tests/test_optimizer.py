@@ -611,3 +611,108 @@ def test_balanced_planned_top_up_toward_target() -> None:
         local_tz=CPH,
     )
     assert decision.recommendation is Recommendation.GRID_CHARGE_PLANNED
+
+
+# ---------------------------------------------------------------------------
+# Charging schedule and export threshold
+# ---------------------------------------------------------------------------
+from custom_components.solar_buddy.optimizer import charging_allowed_now  # noqa: E402
+
+ALL_DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+
+
+def test_schedule_full_day_default_allows() -> None:
+    assert charging_allowed_now(NOW, ALL_DAYS, "00:00:00", "00:00:00", CPH)
+
+
+def test_schedule_day_filter() -> None:
+    # 2026-07-10 is a Friday.
+    assert charging_allowed_now(NOW, ("fri",), "00:00:00", "00:00:00", CPH)
+    assert not charging_allowed_now(NOW, ("mon", "tue"), "00:00:00", "00:00:00", CPH)
+
+
+def test_schedule_window() -> None:
+    # NOW is 14:00 local Copenhagen time.
+    assert charging_allowed_now(NOW, ALL_DAYS, "10:00:00", "16:00:00", CPH)
+    assert not charging_allowed_now(NOW, ALL_DAYS, "16:00:00", "20:00:00", CPH)
+
+
+def test_schedule_window_wraps_midnight() -> None:
+    # 22:00-06:00: 14:00 local is outside, 23:00 local is inside.
+    assert not charging_allowed_now(NOW, ALL_DAYS, "22:00:00", "06:00:00", CPH)
+    evening = NOW + timedelta(hours=9)  # 23:00 local
+    assert charging_allowed_now(evening, ALL_DAYS, "22:00:00", "06:00:00", CPH)
+
+
+def test_schedule_invalid_times_fail_open() -> None:
+    assert charging_allowed_now(NOW, ALL_DAYS, "not a time", "06:00:00", CPH)
+
+
+def test_schedule_blocks_all_charging_including_deadline() -> None:
+    intervals = price_intervals([float(i) for i in range(24)])
+    decision = evaluate(
+        snapshot(solar_power_w=10_000.0, ev_soc=10.0, ev_min_soc=50.0, current_price=1.0),
+        intervals,
+        settings(
+            strategy=Strategy.PRICE_AWARE,
+            ev_battery_capacity_kwh=60.0,
+            ev_departure_time="16:00:00",
+            ev_allowed_days=("mon",),  # today is Friday
+        ),
+        data_ready=True,
+        local_tz=CPH,
+    )
+    assert decision.recommendation is Recommendation.EV_BLOCKED_SCHEDULE
+    assert not decision.should_start_ev
+    assert decision.recommended_ev_current_a == 0.0
+
+
+def test_schedule_stops_active_charging() -> None:
+    decision = evaluate(
+        snapshot(ev_charging=True),
+        [],
+        settings(ev_schedule_start="16:00:00", ev_schedule_end="20:00:00"),
+        data_ready=True,
+        local_tz=CPH,
+    )
+    assert decision.recommendation is Recommendation.EV_BLOCKED_SCHEDULE
+    assert decision.should_stop_ev
+
+
+def test_export_blocked_at_or_below_threshold() -> None:
+    decision = evaluate(
+        snapshot(current_price=0.05),
+        [],
+        settings(export_price_threshold=0.10),
+        data_ready=True,
+    )
+    assert decision.should_allow_export is False
+
+    decision = evaluate(
+        snapshot(current_price=0.10),
+        [],
+        settings(export_price_threshold=0.10),
+        data_ready=True,
+    )
+    assert decision.should_allow_export is False  # at threshold blocks too
+
+    decision = evaluate(
+        snapshot(current_price=0.11),
+        [],
+        settings(export_price_threshold=0.10),
+        data_ready=True,
+    )
+    assert decision.should_allow_export is True
+
+
+def test_export_untouched_without_threshold_or_price() -> None:
+    decision = evaluate(snapshot(current_price=0.05), [], settings(), data_ready=True)
+    assert decision.should_allow_export is None
+
+    decision = evaluate(
+        snapshot(current_price=None),
+        [],
+        settings(export_price_threshold=0.10),
+        data_ready=True,
+    )
+    assert decision.should_allow_export is None

@@ -94,7 +94,8 @@
         "title": "Solar Buddy – Electricity price",
         "description": "Optional: an electricity price sensor, e.g. from Energi Data Service. Without it, Solar Buddy runs in pure solar mode.",
         "data": {
-          "electricity_price_entity": "Electricity price sensor"
+          "electricity_price_entity": "Electricity price sensor",
+          "grid_export_switch_entity": "Grid export switch (on = export allowed)"
         }
       }
     },
@@ -135,7 +136,11 @@
           "manual_override_pause": "Manual override pause",
           "minimum_command_interval": "Minimum interval between commands",
           "data_stale_timeout": "Data stale timeout",
-          "evaluation_interval": "Evaluation interval"
+          "evaluation_interval": "Evaluation interval",
+          "ev_allowed_days": "Days where EV charging is allowed",
+          "ev_schedule_start": "EV charging window start",
+          "ev_schedule_end": "EV charging window end",
+          "export_price_threshold": "Block export at or below this price"
         }
       }
     },
@@ -143,7 +148,8 @@
       "min_above_max": "Minimum current cannot be higher than maximum current.",
       "cheap_above_expensive": "The cheap percentile must be lower than the expensive percentile.",
       "invalid_phases": "The number of phases must be 1 or 3.",
-      "invalid_voltage": "The voltage must be between 100 and 400 V."
+      "invalid_voltage": "The voltage must be between 100 and 400 V.",
+      "no_days_selected": "Select at least one day where charging is allowed."
     }
   },
   "selector": {
@@ -164,6 +170,17 @@
       "options": {
         "switch": "One on/off switch",
         "start_stop": "Separate start and stop entities"
+      }
+    },
+    "weekday": {
+      "options": {
+        "mon": "Monday",
+        "tue": "Tuesday",
+        "wed": "Wednesday",
+        "thu": "Thursday",
+        "fri": "Friday",
+        "sat": "Saturday",
+        "sun": "Sunday"
       }
     }
   },
@@ -192,16 +209,31 @@
           "grid_charge_deadline": "Grid charging now: the required level must be reached before departure",
           "ev_blocked_expensive": "EV charging avoided: electricity is expensive",
           "no_surplus": "No solar surplus available",
-          "surplus_below_minimum": "Solar surplus below the minimum charging power"
+          "surplus_below_minimum": "Solar surplus below the minimum charging power",
+          "ev_blocked_schedule": "EV charging blocked: outside the allowed days/time window"
         }
       },
-      "solar_surplus": { "name": "Solar surplus" },
-      "battery_soc": { "name": "Battery state of charge" },
-      "battery_charge_power": { "name": "Battery charge power" },
-      "battery_discharge_power": { "name": "Battery discharge power" },
-      "available_ev_power": { "name": "Available EV power" },
-      "recommended_ev_current": { "name": "Recommended EV current" },
-      "current_price": { "name": "Current electricity price" },
+      "solar_surplus": {
+        "name": "Solar surplus"
+      },
+      "battery_soc": {
+        "name": "Battery state of charge"
+      },
+      "battery_charge_power": {
+        "name": "Battery charge power"
+      },
+      "battery_discharge_power": {
+        "name": "Battery discharge power"
+      },
+      "available_ev_power": {
+        "name": "Available EV power"
+      },
+      "recommended_ev_current": {
+        "name": "Recommended EV current"
+      },
+      "current_price": {
+        "name": "Current electricity price"
+      },
       "price_level": {
         "name": "Current price level",
         "state": {
@@ -213,19 +245,40 @@
           "unknown": "Unknown"
         }
       },
-      "next_action": { "name": "Next action" },
-      "last_evaluation": { "name": "Last evaluation" },
-      "last_command": { "name": "Last command" }
+      "next_action": {
+        "name": "Next action"
+      },
+      "last_evaluation": {
+        "name": "Last evaluation"
+      },
+      "last_command": {
+        "name": "Last command"
+      }
     },
     "binary_sensor": {
-      "data_ready": { "name": "Data ready" },
-      "solar_surplus_available": { "name": "Solar surplus available" },
-      "ev_connected": { "name": "EV connected" },
-      "automatic_control_available": { "name": "Automatic control available" },
-      "manual_override": { "name": "Manual override" }
+      "data_ready": {
+        "name": "Data ready"
+      },
+      "solar_surplus_available": {
+        "name": "Solar surplus available"
+      },
+      "ev_connected": {
+        "name": "EV connected"
+      },
+      "automatic_control_available": {
+        "name": "Automatic control available"
+      },
+      "manual_override": {
+        "name": "Manual override"
+      },
+      "export_allowed": {
+        "name": "Grid export allowed"
+      }
     },
     "switch": {
-      "automatic_control": { "name": "Automatic control" }
+      "automatic_control": {
+        "name": "Automatic control"
+      }
     },
     "select": {
       "strategy": {
@@ -247,8 +300,12 @@
       }
     },
     "button": {
-      "recalculate": { "name": "Recalculate" },
-      "clear_manual_override": { "name": "Clear manual override" }
+      "recalculate": {
+        "name": "Recalculate"
+      },
+      "clear_manual_override": {
+        "name": "Clear manual override"
+      }
     }
   }
 }

@@ -94,7 +94,8 @@
         "title": "Solar Buddy – Elpris",
         "description": "Valgfrit: en elpris-sensor, fx fra Energi Data Service. Uden den kører Solar Buddy i ren soltilstand.",
         "data": {
-          "electricity_price_entity": "Elpris-sensor"
+          "electricity_price_entity": "Elpris-sensor",
+          "grid_export_switch_entity": "Eksport-kontakt (til = eksport tilladt)"
         }
       }
     },
@@ -135,7 +136,11 @@
           "manual_override_pause": "Pause ved manuel overstyring",
           "minimum_command_interval": "Minimumsinterval mellem kommandoer",
           "data_stale_timeout": "Tidsgrænse for forældede data",
-          "evaluation_interval": "Evalueringsinterval"
+          "evaluation_interval": "Evalueringsinterval",
+          "ev_allowed_days": "Dage hvor bilen må oplade",
+          "ev_schedule_start": "Tilladt ladetidsrum fra",
+          "ev_schedule_end": "Tilladt ladetidsrum til",
+          "export_price_threshold": "Bloker eksport ved pris på eller under"
         }
       }
     },
@@ -143,7 +148,8 @@
       "min_above_max": "Minimumstrømmen kan ikke være højere end maksimumstrømmen.",
       "cheap_above_expensive": "Billig-percentilen skal være lavere end dyr-percentilen.",
       "invalid_phases": "Antal faser skal være 1 eller 3.",
-      "invalid_voltage": "Spændingen skal være mellem 100 og 400 V."
+      "invalid_voltage": "Spændingen skal være mellem 100 og 400 V.",
+      "no_days_selected": "Vælg mindst én dag hvor opladning er tilladt."
     }
   },
   "selector": {
@@ -164,6 +170,17 @@
       "options": {
         "switch": "Én tænd/sluk-kontakt",
         "start_stop": "Separate start- og stop-entiteter"
+      }
+    },
+    "weekday": {
+      "options": {
+        "mon": "Mandag",
+        "tue": "Tirsdag",
+        "wed": "Onsdag",
+        "thu": "Torsdag",
+        "fri": "Fredag",
+        "sat": "Lørdag",
+        "sun": "Søndag"
       }
     }
   },
@@ -192,16 +209,31 @@
           "grid_charge_deadline": "Netopladning nu: det krævede niveau skal nås inden afgang",
           "ev_blocked_expensive": "Bilopladning undgås: elprisen er dyr",
           "no_surplus": "Intet soloverskud til rådighed",
-          "surplus_below_minimum": "Soloverskuddet er under minimums-ladeeffekten"
+          "surplus_below_minimum": "Soloverskuddet er under minimums-ladeeffekten",
+          "ev_blocked_schedule": "Bilopladning blokeret: uden for tilladte dage/tidsrum"
         }
       },
-      "solar_surplus": { "name": "Soloverskud" },
-      "battery_soc": { "name": "Batteri ladetilstand" },
-      "battery_charge_power": { "name": "Batteri opladningseffekt" },
-      "battery_discharge_power": { "name": "Batteri afladningseffekt" },
-      "available_ev_power": { "name": "Tilgængelig EV-effekt" },
-      "recommended_ev_current": { "name": "Anbefalet ladestrøm" },
-      "current_price": { "name": "Aktuel elpris" },
+      "solar_surplus": {
+        "name": "Soloverskud"
+      },
+      "battery_soc": {
+        "name": "Batteri ladetilstand"
+      },
+      "battery_charge_power": {
+        "name": "Batteri opladningseffekt"
+      },
+      "battery_discharge_power": {
+        "name": "Batteri afladningseffekt"
+      },
+      "available_ev_power": {
+        "name": "Tilgængelig EV-effekt"
+      },
+      "recommended_ev_current": {
+        "name": "Anbefalet ladestrøm"
+      },
+      "current_price": {
+        "name": "Aktuel elpris"
+      },
       "price_level": {
         "name": "Aktuelt prisniveau",
         "state": {
@@ -213,19 +245,40 @@
           "unknown": "Ukendt"
         }
       },
-      "next_action": { "name": "Næste handling" },
-      "last_evaluation": { "name": "Seneste evaluering" },
-      "last_command": { "name": "Seneste kommando" }
+      "next_action": {
+        "name": "Næste handling"
+      },
+      "last_evaluation": {
+        "name": "Seneste evaluering"
+      },
+      "last_command": {
+        "name": "Seneste kommando"
+      }
     },
     "binary_sensor": {
-      "data_ready": { "name": "Data klar" },
-      "solar_surplus_available": { "name": "Soloverskud til rådighed" },
-      "ev_connected": { "name": "Bil tilsluttet" },
-      "automatic_control_available": { "name": "Automatisk styring mulig" },
-      "manual_override": { "name": "Manuel overstyring" }
+      "data_ready": {
+        "name": "Data klar"
+      },
+      "solar_surplus_available": {
+        "name": "Soloverskud til rådighed"
+      },
+      "ev_connected": {
+        "name": "Bil tilsluttet"
+      },
+      "automatic_control_available": {
+        "name": "Automatisk styring mulig"
+      },
+      "manual_override": {
+        "name": "Manuel overstyring"
+      },
+      "export_allowed": {
+        "name": "Eksport til nettet tilladt"
+      }
     },
     "switch": {
-      "automatic_control": { "name": "Automatisk styring" }
+      "automatic_control": {
+        "name": "Automatisk styring"
+      }
     },
     "select": {
       "strategy": {
@@ -247,8 +300,12 @@
       }
     },
     "button": {
-      "recalculate": { "name": "Genberegn" },
-      "clear_manual_override": { "name": "Ryd manuel overstyring" }
+      "recalculate": {
+        "name": "Genberegn"
+      },
+      "clear_manual_override": {
+        "name": "Ryd manuel overstyring"
+      }
     }
   }
 }
