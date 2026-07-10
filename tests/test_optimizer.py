@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+import pytest
+
 from custom_components.solar_buddy.const import (
     PriceLevel,
     Priority,
@@ -422,3 +424,190 @@ def test_identical_decisions_are_stable() -> None:
     first = evaluate(snapshot(), [], settings(), data_ready=True)
     second = evaluate(snapshot(), [], settings(), data_ready=True)
     assert first == second
+
+
+# ---------------------------------------------------------------------------
+# Phase 3: grid charging plan
+# ---------------------------------------------------------------------------
+from custom_components.solar_buddy.optimizer import (  # noqa: E402
+    next_departure,
+    plan_grid_windows,
+    required_charge_seconds,
+)
+
+# NOW is 12:00 UTC = 14:00 in Copenhagen (summer time).
+LOCAL_NOW = NOW.astimezone(CPH)
+
+
+def test_required_charge_seconds() -> None:
+    # 40 % of 60 kWh at 90 % efficiency and 11040 W (16 A, 3x230 V)
+    seconds = required_charge_seconds(40.0, 80.0, 60.0, 90.0, 11040.0)
+    assert seconds == pytest.approx(26666.67 / 11040.0 * 3600.0, rel=1e-3)
+    assert required_charge_seconds(80.0, 40.0, 60.0, 90.0, 11040.0) == 0.0
+    assert required_charge_seconds(None, 80.0, 60.0, 90.0, 11040.0) is None
+    assert required_charge_seconds(40.0, 80.0, None, 90.0, 11040.0) is None
+    assert required_charge_seconds(40.0, 80.0, 60.0, 90.0, 0.0) is None
+
+
+def test_next_departure() -> None:
+    # 18:00 local is still ahead of 14:00 local: today.
+    departure = next_departure("18:00:00", NOW, CPH)
+    assert departure == datetime(2026, 7, 10, 18, 0, tzinfo=CPH)
+    # 07:00 local already passed: tomorrow.
+    departure = next_departure("07:00:00", NOW, CPH)
+    assert departure == datetime(2026, 7, 11, 7, 0, tzinfo=CPH)
+    assert next_departure(None, NOW, CPH) is None
+    assert next_departure("not a time", NOW, CPH) is None
+
+
+def test_plan_grid_windows_picks_cheapest() -> None:
+    intervals = price_intervals([float(i) for i in range(24)])
+    deadline = datetime(2026, 7, 10, 18, 0, tzinfo=CPH)  # hours 14-17 available
+    plan = plan_grid_windows(intervals, NOW, deadline, needed_seconds=3600.0)
+    assert plan is not None
+    # Hour 14 (price 14) is the cheapest in the window and contains "now".
+    assert plan.charge_now
+    assert not plan.deadline_pressure
+    assert plan.next_window_start is None
+
+
+def test_plan_grid_windows_waits_for_cheaper_window() -> None:
+    prices = [float(i) for i in range(24)]
+    prices[15] = 1.0  # hour 15 is by far the cheapest in the window
+    intervals = price_intervals(prices)
+    deadline = datetime(2026, 7, 10, 18, 0, tzinfo=CPH)
+    plan = plan_grid_windows(intervals, NOW, deadline, needed_seconds=3600.0)
+    assert plan is not None
+    assert not plan.charge_now
+    assert plan.next_window_start == datetime(2026, 7, 10, 15, 0, tzinfo=CPH)
+
+
+def test_plan_grid_windows_deadline_pressure() -> None:
+    intervals = price_intervals([float(i) for i in range(24)])
+    deadline = datetime(2026, 7, 10, 16, 0, tzinfo=CPH)  # only 2 hours left
+    plan = plan_grid_windows(intervals, NOW, deadline, needed_seconds=3.0 * 3600.0)
+    assert plan is not None
+    assert plan.deadline_pressure
+
+
+def test_plan_grid_windows_without_data() -> None:
+    assert plan_grid_windows([], NOW, None, 3600.0) is None
+    assert plan_grid_windows([], NOW, NOW, 3600.0) is None
+    intervals = price_intervals([1.0] * 24)
+    assert plan_grid_windows(intervals, NOW, None, 3600.0) is None
+    assert plan_grid_windows(intervals, NOW, NOW + timedelta(hours=2), 0.0) is None
+
+
+def test_deadline_pressure_charges_despite_expensive_price() -> None:
+    intervals = price_intervals([float(i) for i in range(24)])
+    decision = evaluate(
+        snapshot(
+            solar_power_w=0.0,
+            ev_soc=10.0,
+            ev_min_soc=50.0,
+            current_price=14.0,
+        ),
+        intervals,
+        settings(
+            strategy=Strategy.PRICE_AWARE,
+            ev_battery_capacity_kwh=60.0,
+            ev_departure_time="16:00:00",  # ~7 h needed, 2 h left
+        ),
+        data_ready=True,
+        local_tz=CPH,
+    )
+    assert decision.recommendation is Recommendation.GRID_CHARGE_DEADLINE
+    assert decision.recommended_ev_current_a == 16.0
+    assert decision.should_start_ev
+
+
+def test_planned_window_charges_at_normal_price() -> None:
+    """Below min: the cheapest hour before departure is used even if the
+    price is only 'normal' relative to the whole day."""
+    intervals = price_intervals([float(i) for i in range(24)])
+    decision = evaluate(
+        snapshot(
+            solar_power_w=0.0,
+            ev_soc=40.0,
+            ev_min_soc=50.0,
+            current_price=14.0,  # normal classification
+        ),
+        intervals,
+        settings(
+            strategy=Strategy.PRICE_AWARE,
+            ev_battery_capacity_kwh=60.0,
+            ev_departure_time="18:00:00",
+        ),
+        data_ready=True,
+        local_tz=CPH,
+    )
+    assert decision.recommendation is Recommendation.GRID_CHARGE_PLANNED
+
+
+def test_waiting_for_planned_window_sets_next_action() -> None:
+    prices = [float(i) for i in range(24)]
+    prices[15] = 1.0  # the cheap window is at 15:00
+    intervals = price_intervals(prices)
+    decision = evaluate(
+        snapshot(
+            solar_power_w=0.0,
+            ev_soc=40.0,
+            ev_min_soc=50.0,
+            current_price=14.0,
+        ),
+        intervals,
+        settings(
+            strategy=Strategy.PRICE_AWARE,
+            ev_battery_capacity_kwh=6.0,  # small need: fits in one hour
+            ev_departure_time="18:00:00",
+        ),
+        data_ready=True,
+        local_tz=CPH,
+    )
+    assert decision.recommendation is Recommendation.NO_SURPLUS
+    assert decision.next_action_at == datetime(2026, 7, 10, 15, 0, tzinfo=CPH)
+
+
+def test_balanced_tops_up_on_very_cheap_without_plan_data() -> None:
+    intervals = price_intervals([float(i) for i in range(24)])
+    decision = evaluate(
+        snapshot(solar_power_w=0.0, ev_soc=60.0, ev_min_soc=40.0, current_price=0.5),
+        intervals,
+        settings(strategy=Strategy.BALANCED),
+        data_ready=True,
+        local_tz=CPH,
+    )
+    assert decision.recommendation is Recommendation.GRID_CHARGE_CHEAP
+
+
+def test_price_aware_does_not_top_up_above_min() -> None:
+    intervals = price_intervals([float(i) for i in range(24)])
+    decision = evaluate(
+        snapshot(solar_power_w=0.0, ev_soc=60.0, ev_min_soc=40.0, current_price=0.5),
+        intervals,
+        settings(strategy=Strategy.PRICE_AWARE),
+        data_ready=True,
+        local_tz=CPH,
+    )
+    assert decision.recommendation is Recommendation.NO_SURPLUS
+
+
+def test_balanced_planned_top_up_toward_target() -> None:
+    intervals = price_intervals([float(i) for i in range(24)])
+    decision = evaluate(
+        snapshot(
+            solar_power_w=0.0,
+            ev_soc=60.0,
+            ev_min_soc=40.0,
+            current_price=14.0,
+        ),
+        intervals,
+        settings(
+            strategy=Strategy.BALANCED,
+            ev_battery_capacity_kwh=60.0,
+            ev_departure_time="18:00:00",
+        ),
+        data_ready=True,
+        local_tz=CPH,
+    )
+    assert decision.recommendation is Recommendation.GRID_CHARGE_PLANNED

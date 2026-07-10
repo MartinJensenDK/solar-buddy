@@ -138,8 +138,29 @@ valuta og prisniveau. Negative priser er altid *very_cheap*.
 - **Price aware**: Netopladning tillades i billige perioder, når bilen er
   under sin minimum-SoC; unødvendig opladning undgås i dyre perioder.
 - **Balanced**: Soloverskud først, billige priser som supplement, minimum-SoC
-  sikres når data findes.
+  sikres når data findes. Topper desuden op mod mål-SoC i planlagte billige
+  tidsrum (eller ved *meget* billig pris, fx negative priser, når der ikke er
+  plandata).
 - **Monitor only** *(standard)*: Alt beregnes og vises; intet styres.
+
+### Planlagt netopladning (v0.3.0)
+
+Når du i indstillingerne angiver **bilens afgangstid**, **batterikapacitet**
+og **ladevirkningsgrad**, planlægger Solar Buddy deterministisk:
+
+1. Behovet beregnes: `(mål − aktuel SoC) × kapacitet / virkningsgrad`,
+   omregnet til ladetimer ved maks. strøm.
+2. De billigste prisintervaller inden afgang vælges, indtil behovet er dækket.
+3. Er det nuværende interval et af de valgte, lades fra nettet nu
+   (*Netopladning i et planlagt billigt tidsrum*); ellers viser
+   *Next action*-sensoren, hvornår næste planlagte tidsrum starter.
+4. **Deadline-tvang:** Kan behovet ikke længere nås inden afgang, lades der
+   med det samme uanset pris (*Netopladning nu: det krævede niveau skal nås
+   inden afgang*).
+
+Under minimum-SoC bruges planen af både *Price aware* og *Balanced*; mellem
+minimum og mål bruges den kun af *Balanced*. Uden plandata falder adfærden
+tilbage til ren prisklassificering (billige timer under minimum).
 
 **Prioriteter:** *Battery first* reserverer batteriets aktuelle ladeeffekt før
 bilen får resten; *EV first* giver bilen hele overskuddet; *Balanced* løfter
@@ -196,8 +217,8 @@ skift tilbage.
 - Automatisk EV-styring kræver en konfigureret kabelstatus-entitet — uden
   kendt kabelstatus sendes aldrig kommandoer (failsafe).
 - Én elbil pr. installation (multi-EV er planlagt).
-- `ev_departure_time` og `ev_battery_capacity_kwh` indsamles, men bruges
-  først af planlægningslogikken i en senere fase.
+- Planlagt netopladning kræver både afgangstid og batterikapacitet i
+  indstillingerne; uden dem bruges kun prisklassificering.
 
 ## Sådan fjernes integrationen
 

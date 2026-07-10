@@ -181,6 +181,8 @@ class Recommendation(StrEnum):
     EV_TARGET_REACHED = "ev_target_reached"
     EV_CHARGE_RECOMMENDED = "ev_charge_recommended"
     GRID_CHARGE_CHEAP = "grid_charge_cheap"
+    GRID_CHARGE_PLANNED = "grid_charge_planned"
+    GRID_CHARGE_DEADLINE = "grid_charge_deadline"
     EV_BLOCKED_EXPENSIVE = "ev_blocked_expensive"
     NO_SURPLUS = "no_surplus"
     SURPLUS_BELOW_MINIMUM = "surplus_below_minimum"

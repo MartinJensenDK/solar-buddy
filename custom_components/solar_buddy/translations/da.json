@@ -188,6 +188,8 @@
           "ev_target_reached": "Bilopladning færdig: mål-ladetilstand er nået",
           "ev_charge_recommended": "Bilopladning anbefales med soloverskud",
           "grid_charge_cheap": "Netopladning anbefales: bilen er under minimum og prisen er billig",
+          "grid_charge_planned": "Netopladning i et planlagt billigt tidsrum inden afgang",
+          "grid_charge_deadline": "Netopladning nu: det krævede niveau skal nås inden afgang",
           "ev_blocked_expensive": "Bilopladning undgås: elprisen er dyr",
           "no_surplus": "Intet soloverskud til rådighed",
           "surplus_below_minimum": "Soloverskuddet er under minimums-ladeeffekten"

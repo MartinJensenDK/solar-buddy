@@ -188,6 +188,8 @@
           "ev_target_reached": "EV charging done: target state of charge reached",
           "ev_charge_recommended": "EV charging recommended from solar surplus",
           "grid_charge_cheap": "Grid charging recommended: EV below minimum during cheap prices",
+          "grid_charge_planned": "Grid charging in a planned cheap window before departure",
+          "grid_charge_deadline": "Grid charging now: the required level must be reached before departure",
           "ev_blocked_expensive": "EV charging avoided: electricity is expensive",
           "no_surplus": "No solar surplus available",
           "surplus_below_minimum": "Solar surplus below the minimum charging power"

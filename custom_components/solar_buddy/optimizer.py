@@ -31,6 +31,8 @@ intervals + EV below its minimum SoC).
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
+from datetime import datetime, time, timedelta, tzinfo
 
 from .const import (
     PriceLevel,
@@ -49,6 +51,112 @@ from .price_parser import classify_price
 
 _GRID_CHARGE_LEVELS = (PriceLevel.VERY_CHEAP, PriceLevel.CHEAP)
 _EXPENSIVE_LEVELS = (PriceLevel.EXPENSIVE, PriceLevel.VERY_EXPENSIVE)
+_PRICE_STRATEGIES = (Strategy.PRICE_AWARE, Strategy.BALANCED)
+
+
+# ---------------------------------------------------------------------------
+# Grid charging plan (pure helpers)
+# ---------------------------------------------------------------------------
+@dataclass(slots=True)
+class GridChargePlan:
+    """Result of planning grid charging into the cheapest intervals."""
+
+    charge_now: bool
+    deadline_pressure: bool
+    next_window_start: datetime | None
+
+
+def required_charge_seconds(
+    current_soc: float | None,
+    goal_soc: float | None,
+    capacity_kwh: float | None,
+    efficiency_pct: float,
+    charge_power_w: float,
+) -> float | None:
+    """Seconds of full-power charging needed to reach the goal SoC.
+
+    Returns ``None`` when the necessary data is missing, 0.0 when the goal
+    is already reached.
+    """
+    if (
+        current_soc is None
+        or goal_soc is None
+        or capacity_kwh is None
+        or capacity_kwh <= 0
+        or efficiency_pct <= 0
+        or charge_power_w <= 0
+    ):
+        return None
+    missing_pct = goal_soc - current_soc
+    if missing_pct <= 0:
+        return 0.0
+    energy_wh = missing_pct / 100.0 * capacity_kwh * 1000.0 / (efficiency_pct / 100.0)
+    return energy_wh / charge_power_w * 3600.0
+
+
+def next_departure(
+    departure: str | None, now: datetime, local_tz: tzinfo | None
+) -> datetime | None:
+    """Next occurrence of a local HH:MM[:SS] departure time, or None."""
+    if not departure:
+        return None
+    try:
+        departure_time = time.fromisoformat(departure)
+    except ValueError:
+        return None
+    zone = local_tz or now.tzinfo
+    local_now = now.astimezone(zone)
+    candidate = datetime.combine(local_now.date(), departure_time, tzinfo=zone)
+    if candidate <= local_now:
+        candidate += timedelta(days=1)
+    return candidate
+
+
+def plan_grid_windows(
+    intervals: list[PriceInterval],
+    now: datetime,
+    deadline: datetime | None,
+    needed_seconds: float | None,
+) -> GridChargePlan | None:
+    """Pick the cheapest intervals before the deadline to cover the need.
+
+    Deterministic: candidates are the known price intervals clipped to
+    [now, deadline), sorted by (price, start), and chosen greedily until the
+    needed charging time is covered. ``deadline_pressure`` means the
+    remaining time barely (or no longer) covers the need, so charging must
+    run continuously regardless of price.
+    """
+    if needed_seconds is None or deadline is None or needed_seconds <= 0.0:
+        return None
+    windows: list[tuple[float, datetime, datetime]] = []
+    for interval in intervals:
+        start = max(interval.start, now)
+        end = min(interval.end, deadline)
+        if end > start:
+            windows.append((interval.price, start, end))
+    if not windows:
+        return None
+
+    available_seconds = sum(
+        (end - start).total_seconds() for _, start, end in windows
+    )
+    deadline_pressure = needed_seconds >= available_seconds
+
+    chosen: list[tuple[datetime, datetime]] = []
+    accumulated = 0.0
+    for _, start, end in sorted(windows, key=lambda window: (window[0], window[1])):
+        if accumulated >= needed_seconds:
+            break
+        chosen.append((start, end))
+        accumulated += (end - start).total_seconds()
+
+    charge_now = any(start <= now < end for start, end in chosen)
+    future_starts = [start for start, _ in chosen if start > now]
+    return GridChargePlan(
+        charge_now=charge_now,
+        deadline_pressure=deadline_pressure,
+        next_window_start=min(future_starts) if future_starts else None,
+    )
 
 
 def recommended_current(available_power_w: float, settings: OptimizationSettings) -> float:
@@ -117,6 +225,7 @@ def evaluate(
     *,
     data_ready: bool,
     stale: bool = False,
+    local_tz: tzinfo | None = None,
 ) -> OptimizationDecision:
     """Evaluate one snapshot and produce a decision.
 
@@ -171,30 +280,15 @@ def evaluate(
         decision.recommended_ev_current_a = 0.0
         return decision
 
-    # Price-driven grid charging: allowed in price_aware and balanced when
-    # the EV is below its minimum SoC and the price is (very) cheap.
+    # Price-driven grid charging (price_aware and balanced strategies).
     ev_below_min = (
         snapshot.ev_soc is not None
         and snapshot.ev_min_soc is not None
         and snapshot.ev_soc < snapshot.ev_min_soc
     )
-    if (
-        settings.strategy in (Strategy.PRICE_AWARE, Strategy.BALANCED)
-        and ev_below_min
-        and price_level in _GRID_CHARGE_LEVELS
+    if settings.strategy in _PRICE_STRATEGIES and _apply_grid_charging(
+        decision, snapshot, settings, price_intervals, price_level, ev_below_min, local_tz
     ):
-        decision.recommendation = Recommendation.GRID_CHARGE_CHEAP
-        decision.reason_placeholders = {
-            "ev_soc": f"{snapshot.ev_soc:.0f}" if snapshot.ev_soc is not None else "?",
-            "min_soc": (
-                f"{snapshot.ev_min_soc:.0f}" if snapshot.ev_min_soc is not None else "?"
-            ),
-        }
-        decision.recommended_ev_current_a = settings.ev_max_current
-        decision.should_start_ev = not snapshot.ev_charging
-        decision.should_change_ev_current = _needs_current_change(
-            snapshot, settings, settings.ev_max_current
-        )
         return decision
 
     # Price-aware strategies avoid discretionary charging in expensive hours.
@@ -230,6 +324,113 @@ def evaluate(
         }
     decision.should_stop_ev = snapshot.ev_charging
     return decision
+
+
+def _apply_grid_charging(
+    decision: OptimizationDecision,
+    snapshot: EnergySnapshot,
+    settings: OptimizationSettings,
+    price_intervals: list[PriceInterval],
+    price_level: PriceLevel,
+    ev_below_min: bool,
+    local_tz: tzinfo | None,
+) -> bool:
+    """Decide whether to grid-charge now; returns True when decided.
+
+    Below the minimum SoC (both price strategies):
+
+    1. deadline pressure — the time left before departure barely covers the
+       need, so charge continuously regardless of price,
+    2. the current price is classified (very) cheap,
+    3. the current interval is one of the planned cheapest windows before
+       departure (requires departure time + battery capacity).
+
+    Between minimum and target SoC (balanced only): charge in the planned
+    cheapest windows, or — without planning data — when the price is
+    classified very cheap (which includes negative prices).
+
+    When charging should wait for a later planned window, only
+    ``next_action_at`` is set and the surplus logic still runs.
+    """
+    now = snapshot.timestamp
+    departure = next_departure(settings.ev_departure_time, now, local_tz)
+    max_power = settings.charger_power_w(settings.ev_max_current)
+
+    if ev_below_min:
+        needed = required_charge_seconds(
+            snapshot.ev_soc,
+            snapshot.ev_min_soc,
+            settings.ev_battery_capacity_kwh,
+            settings.ev_charging_efficiency,
+            max_power,
+        )
+        plan = plan_grid_windows(price_intervals, now, departure, needed)
+        if plan is not None and plan.deadline_pressure:
+            _fill_grid_decision(
+                decision, snapshot, settings, Recommendation.GRID_CHARGE_DEADLINE
+            )
+            return True
+        if price_level in _GRID_CHARGE_LEVELS:
+            _fill_grid_decision(
+                decision, snapshot, settings, Recommendation.GRID_CHARGE_CHEAP
+            )
+            return True
+        if plan is not None:
+            if plan.charge_now:
+                _fill_grid_decision(
+                    decision, snapshot, settings, Recommendation.GRID_CHARGE_PLANNED
+                )
+                return True
+            decision.next_action_at = plan.next_window_start
+        return False
+
+    # Above minimum: only the balanced strategy tops up toward the target.
+    if settings.strategy is not Strategy.BALANCED or snapshot.ev_soc is None:
+        return False
+    needed = required_charge_seconds(
+        snapshot.ev_soc,
+        settings.ev_target_soc,
+        settings.ev_battery_capacity_kwh,
+        settings.ev_charging_efficiency,
+        max_power,
+    )
+    plan = plan_grid_windows(price_intervals, now, departure, needed)
+    if plan is not None:
+        if plan.charge_now:
+            _fill_grid_decision(
+                decision, snapshot, settings, Recommendation.GRID_CHARGE_PLANNED
+            )
+            return True
+        decision.next_action_at = plan.next_window_start
+        return False
+    if price_level is PriceLevel.VERY_CHEAP:
+        _fill_grid_decision(
+            decision, snapshot, settings, Recommendation.GRID_CHARGE_CHEAP
+        )
+        return True
+    return False
+
+
+def _fill_grid_decision(
+    decision: OptimizationDecision,
+    snapshot: EnergySnapshot,
+    settings: OptimizationSettings,
+    recommendation: Recommendation,
+) -> None:
+    """Fill a decision that grid-charges at maximum current."""
+    decision.recommendation = recommendation
+    decision.reason_placeholders = {
+        "ev_soc": f"{snapshot.ev_soc:.0f}" if snapshot.ev_soc is not None else "?",
+        "min_soc": (
+            f"{snapshot.ev_min_soc:.0f}" if snapshot.ev_min_soc is not None else "?"
+        ),
+        "target_soc": f"{settings.ev_target_soc:.0f}",
+    }
+    decision.recommended_ev_current_a = settings.ev_max_current
+    decision.should_start_ev = not snapshot.ev_charging
+    decision.should_change_ev_current = _needs_current_change(
+        snapshot, settings, settings.ev_max_current
+    )
 
 
 def _needs_current_change(

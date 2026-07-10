@@ -382,7 +382,11 @@ class SolarBuddyCoordinator(DataUpdateCoordinator[SolarBuddyData]):
         except HomeAssistantError as err:
             _LOGGER.warning("EV control failed: %s", err)
             return
-        data.decision.next_action_at = next_action_at
+        # The optimizer may already have set next_action_at (e.g. the start
+        # of the next planned cheap window); the controller's timing wins
+        # only when it actually has one.
+        if next_action_at is not None:
+            data.decision.next_action_at = next_action_at
         if commanded:
             self.last_command = dt_util.utcnow()
             data.last_command = self.last_command
@@ -448,6 +452,7 @@ class SolarBuddyCoordinator(DataUpdateCoordinator[SolarBuddyData]):
             settings,
             data_ready=data_ready,
             stale=stale,
+            local_tz=dt_util.get_default_time_zone(),
         )
 
         return SolarBuddyData(
