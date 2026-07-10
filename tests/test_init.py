@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from datetime import timedelta
+from pathlib import Path
 
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
@@ -103,7 +105,10 @@ async def test_diagnostics(hass: HomeAssistant, full_config_data) -> None:
     await setup_entry(hass, entry)
 
     diagnostics = await async_get_config_entry_diagnostics(hass, entry)
-    assert diagnostics["version"] == "0.1.0"
+    manifest = json.loads(
+        Path("custom_components/solar_buddy/manifest.json").read_text()
+    )
+    assert diagnostics["version"] == manifest["version"]
     assert diagnostics["strategy"] == "monitor_only"
     assert diagnostics["automatic_control"] is False
     assert diagnostics["snapshot"]["solar_power_w"] == 3000.0

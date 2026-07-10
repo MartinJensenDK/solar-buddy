@@ -179,7 +179,6 @@ skift tilbage.
 - Én elbil pr. installation (multi-EV er planlagt).
 - `ev_departure_time` og `ev_battery_capacity_kwh` indsamles, men bruges
   først af planlægningslogikken i en senere fase.
-- Integrationen vises som *Helper* i Home Assistant (integration_type: helper).
 
 ## Sådan fjernes integrationen
 
