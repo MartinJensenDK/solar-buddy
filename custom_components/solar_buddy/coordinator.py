@@ -19,6 +19,7 @@ from datetime import datetime, timedelta
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_UNIT_OF_MEASUREMENT
 from homeassistant.core import Event, HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.debounce import Debouncer
 from homeassistant.helpers.event import EventStateChangedData
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
@@ -52,6 +53,7 @@ from .const import (
     Priority,
     Strategy,
 )
+from .ev_control import EvChargerEntities, EvController
 from .models import (
     EnergySnapshot,
     OptimizationDecision,
@@ -86,6 +88,7 @@ class SolarBuddyData:
     issues: list[str] = field(default_factory=list)
     last_evaluation: datetime | None = None
     last_command: datetime | None = None
+    cable_known: bool = False
 
 
 class SolarBuddyCoordinator(DataUpdateCoordinator[SolarBuddyData]):
@@ -117,8 +120,16 @@ class SolarBuddyCoordinator(DataUpdateCoordinator[SolarBuddyData]):
         self.last_command: datetime | None = None
 
         self.actuators = ActuatorAdapter(hass, entry.entry_id)
+        self._ev_entities = EvChargerEntities.from_entry_data(entry.data)
+        self.ev_controller = EvController(
+            self.actuators, self._ev_entities, self._read_plain_state
+        )
         self._evaluation_lock = asyncio.Lock()
         self._availability: dict[str, bool] = {}
+
+    def _read_plain_state(self, entity_id: str) -> str | None:
+        state = self.hass.states.get(entity_id)
+        return state.state if state is not None else None
 
     # ------------------------------------------------------------------
     # Configuration helpers
@@ -154,6 +165,7 @@ class SolarBuddyCoordinator(DataUpdateCoordinator[SolarBuddyData]):
             automatic_control=self.automatic_control,
             ev_configured=self.ev_configured,
             battery_configured=self.battery_configured,
+            manual_override=self.manual_override_active,
         )
 
     @property
@@ -194,9 +206,33 @@ class SolarBuddyCoordinator(DataUpdateCoordinator[SolarBuddyData]):
     # ------------------------------------------------------------------
     @callback
     def handle_source_state_change(self, event: Event[EventStateChangedData]) -> None:
-        """Schedule a debounced re-evaluation on source entity changes."""
+        """Schedule a debounced re-evaluation on source entity changes.
+
+        A user-initiated change (context has a user id) of an entity Solar
+        Buddy controls pauses automatic control for the configured time, so
+        Solar Buddy never fights the user's manual choice. Its own service
+        calls are recognized via their context and ignored here.
+        """
         if self.actuators.is_own_context(event.context):
             return
+        if (
+            self.automatic_control
+            and not self.manual_override_active
+            and event.context.user_id is not None
+            and event.data["entity_id"] in self._ev_entities.controlled_entity_ids()
+        ):
+            pause_min = self.current_settings().manual_override_pause_min
+            if pause_min > 0:
+                self.manual_override_until = dt_util.utcnow() + timedelta(
+                    minutes=pause_min
+                )
+                self.ev_controller.reset_pending()
+                _LOGGER.info(
+                    "Manual change of %s detected; pausing automatic control "
+                    "for %s minutes",
+                    event.data["entity_id"],
+                    pause_min,
+                )
         self.config_entry.async_create_background_task(
             self.hass, self.async_request_refresh(), name=f"{DOMAIN}_refresh"
         )
@@ -316,7 +352,40 @@ class SolarBuddyCoordinator(DataUpdateCoordinator[SolarBuddyData]):
     # ------------------------------------------------------------------
     async def _async_update_data(self) -> SolarBuddyData:
         async with self._evaluation_lock:
-            return self._evaluate()
+            data = self._evaluate()
+            await self._async_apply_control(data)
+            return data
+
+    async def _async_apply_control(self, data: SolarBuddyData) -> None:
+        """Run the EV controller when every safety condition is met.
+
+        Automatic control requires: the switch on, an active strategy, a
+        configured EV charger, fresh valid data, known cable status, and no
+        active manual override. Otherwise any pending action is dropped.
+        """
+        settings = self.current_settings()
+        allowed = (
+            settings.automatic_control
+            and settings.strategy is not Strategy.MONITOR_ONLY
+            and settings.ev_configured
+            and data.decision.data_ready
+            and data.cable_known
+            and not self.manual_override_active
+        )
+        if not allowed:
+            self.ev_controller.reset_pending()
+            return
+        try:
+            commanded, next_action_at = await self.ev_controller.apply(
+                data.decision, settings, dt_util.utcnow()
+            )
+        except HomeAssistantError as err:
+            _LOGGER.warning("EV control failed: %s", err)
+            return
+        data.decision.next_action_at = next_action_at
+        if commanded:
+            self.last_command = dt_util.utcnow()
+            data.last_command = self.last_command
 
     def _evaluate(self) -> SolarBuddyData:
         settings = self.current_settings()
@@ -388,4 +457,5 @@ class SolarBuddyCoordinator(DataUpdateCoordinator[SolarBuddyData]):
             issues=issues,
             last_evaluation=now,
             last_command=self.last_command,
+            cable_known=ev_connected is not None,
         )

@@ -73,6 +73,8 @@ def _status_for(settings: OptimizationSettings, data_ready: bool, stale: bool) -
     if not data_ready:
         return SolarBuddyStatus.WAITING_FOR_DATA
     if settings.automatic_control and settings.strategy is not Strategy.MONITOR_ONLY:
+        if settings.manual_override:
+            return SolarBuddyStatus.PAUSED_MANUAL_OVERRIDE
         return SolarBuddyStatus.ACTIVE
     return SolarBuddyStatus.MONITORING
 

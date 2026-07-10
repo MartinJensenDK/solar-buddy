@@ -51,6 +51,8 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[SolarBuddyBinarySensorDescription, ...] = (
         is_on_fn=lambda coordinator: (
             coordinator.data.decision.data_ready
             and coordinator.strategy is not Strategy.MONITOR_ONLY
+            and coordinator.ev_configured
+            and coordinator.data.cable_known
             and not coordinator.manual_override_active
         ),
     ),

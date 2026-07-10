@@ -167,6 +167,7 @@ class SolarBuddyStatus(StrEnum):
 
     MONITORING = "monitoring"
     ACTIVE = "active"
+    PAUSED_MANUAL_OVERRIDE = "paused_manual_override"
     WAITING_FOR_DATA = "waiting_for_data"
     STALE_DATA = "stale_data"
 

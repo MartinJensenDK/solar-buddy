@@ -89,18 +89,35 @@ energisensorer (Wh/kWh/MWh) afvises i opsætningen.
 
 ## EV-styring
 
-Automatisk EV-styring (fase 2 — under udvikling) sender kun kommandoer, når
-**alle** disse betingelser er opfyldt: automatisk styring er tændt, strategien
-ikke er *Monitor only*, laderen er konfigureret, kabelstatus er kendt og bilen
-tilsluttet, de obligatoriske sensorer leverer friske gyldige værdier, den
-beregnede handling har været stabil i start-/stopforsinkelsen, og
-minimumsintervallet siden sidste kommando er udløbet.
+Automatisk EV-styring sender kun kommandoer, når **alle** disse betingelser
+er opfyldt: automatisk styring er tændt, strategien ikke er *Monitor only*,
+laderen er konfigureret, kabelstatus er kendt og bilen tilsluttet, de
+obligatoriske sensorer leverer friske gyldige værdier, den beregnede handling
+har været stabil i start-/stopforsinkelsen, og minimumsintervallet siden
+sidste kommando er udløbet.
 
 Anbefalet ladestrøm beregnes som
 `floor(tilgængelig_effekt / (faser × spænding × trin)) × trin`, begrænset til
-[min, max]. Er der ikke effekt nok til minimumsstrømmen, anbefales stop efter
-stopforsinkelsen. I fase 1 (denne version) beregnes og vises alt dette — der
-sendes **ingen** kommandoer endnu.
+[min, max]. Er der ikke effekt nok til minimumsstrømmen, stoppes opladningen
+efter stopforsinkelsen.
+
+**Hysterese:** Et kortvarigt soludsving starter ikke opladningen (kravet skal
+være stabilt i hele startforsinkelsen), en enkelt sky stopper den ikke
+(stopforsinkelsen), og strømmen justeres højst én gang pr.
+justeringsinterval og kun når ændringen er mindst ét strømtrin.
+
+**Rækkefølge:** Ved start sættes ladestrømmen først (hvis entiteten er
+skrivbar), derefter startes opladningen, og Solar Buddy verificerer bagefter
+at kontakten faktisk skiftede tilstand — udebliver bekræftelsen, logges en
+advarsel, og der sendes ingen nye kommandoer imens. Ved stop sendes ingen
+strømjusteringer, før opladningen startes igen.
+
+**Manuel overstyring:** Ændrer du selv en styret lader-entitet (fx slukker
+kontakten fra UI'et), sætter Solar Buddy automatikken på pause i
+`manual_override_pause` minutter, så den ikke kæmper imod dig. Status-sensoren
+viser *På pause (manuel overstyring)*, og knappen *Ryd manuel overstyring*
+ophæver pausen med det samme. Solar Buddys egne kommandoer genkendes via
+deres context og udløser aldrig pausen.
 
 ## Energi Data Service
 
@@ -174,8 +191,10 @@ skift tilbage.
 
 ## Kendte begrænsninger
 
-- Fase 1: der sendes ingen styringskommandoer endnu (EV-styring, prisstyring
-  og batteristyring kommer i fase 2–4). Alle beregninger og sensorer virker.
+- Batteristyring (skrivning til batteriets kontrol-entiteter) kommer i fase 4;
+  batteriet indgår indtil da kun i beregningerne.
+- Automatisk EV-styring kræver en konfigureret kabelstatus-entitet — uden
+  kendt kabelstatus sendes aldrig kommandoer (failsafe).
 - Én elbil pr. installation (multi-EV er planlagt).
 - `ev_departure_time` og `ev_battery_capacity_kwh` indsamles, men bruges
   først af planlægningslogikken i en senere fase.

@@ -174,6 +174,7 @@
         "state": {
           "monitoring": "Monitoring",
           "active": "Active control",
+          "paused_manual_override": "Paused (manual override)",
           "waiting_for_data": "Waiting for data",
           "stale_data": "Sensor data is stale"
         }

@@ -174,6 +174,7 @@
         "state": {
           "monitoring": "Overvåger",
           "active": "Aktiv styring",
+          "paused_manual_override": "På pause (manuel overstyring)",
           "waiting_for_data": "Venter på data",
           "stale_data": "Sensordata er forældede"
         }

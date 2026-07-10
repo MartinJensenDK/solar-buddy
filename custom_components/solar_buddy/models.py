@@ -113,6 +113,7 @@ class OptimizationSettings:
     strategy: Strategy = Strategy.MONITOR_ONLY
     priority: Priority = Priority.BATTERY_FIRST
     automatic_control: bool = False
+    manual_override: bool = False
 
     ev_min_current: float = DEFAULT_EV_MIN_CURRENT
     ev_max_current: float = DEFAULT_EV_MAX_CURRENT
@@ -152,12 +153,14 @@ class OptimizationSettings:
         automatic_control: bool,
         ev_configured: bool,
         battery_configured: bool,
+        manual_override: bool = False,
     ) -> OptimizationSettings:
         """Build settings from a config entry's options mapping."""
         return cls(
             strategy=strategy,
             priority=priority,
             automatic_control=automatic_control,
+            manual_override=manual_override,
             ev_min_current=float(
                 options.get(CONF_EV_MIN_CURRENT, DEFAULT_EV_MIN_CURRENT)
             ),
