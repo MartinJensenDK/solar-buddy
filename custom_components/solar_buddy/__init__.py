@@ -9,6 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_state_change_event
 
 from .coordinator import SolarBuddyConfigEntry, SolarBuddyCoordinator
+from .panel import async_register_panel, async_remove_panel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,6 +47,14 @@ async def async_setup_entry(
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # The management page is optional UI; a failure here must never prevent
+    # the integration itself from running.
+    try:
+        await async_register_panel(hass, entry)
+    except Exception:
+        _LOGGER.exception("Failed to register the Solar Buddy management panel")
+
     return True
 
 
@@ -60,6 +69,7 @@ async def async_unload_entry(
     hass: HomeAssistant, entry: SolarBuddyConfigEntry
 ) -> bool:
     """Unload a config entry; listeners are cleaned up via async_on_unload."""
+    async_remove_panel(hass)
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 

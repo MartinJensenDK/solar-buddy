@@ -1,13 +1,15 @@
 {
   "domain": "solar_buddy",
   "name": "Solar Buddy",
+  "after_dependencies": ["frontend", "panel_custom"],
   "codeowners": ["@MartinJensenDK"],
   "config_flow": true,
+  "dependencies": ["http"],
   "documentation": "https://github.com/MartinJensenDK/solar-buddy",
   "integration_type": "service",
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/MartinJensenDK/solar-buddy/issues",
   "requirements": [],
   "single_config_entry": true,
-  "version": "0.6.0"
+  "version": "0.7.0"
 }

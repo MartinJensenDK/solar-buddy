@@ -25,6 +25,22 @@ ingen ekstern server og ingen AI-model involveret i driften.
 - Alle beregninger eksponeres som sensorer, så du kan bygge dashboards og
   automationer oven på dem — også uden automatisk styring.
 
+## Administrationsside (v0.7.0)
+
+Solar Buddy tilføjer et menupunkt **Solar Buddy** i Home Assistants sidebar,
+der åbner en samlet administrationsside. Siden er en overskuelig oversigt over
+integrationens egne entiteter, hvor du kan:
+
+- se status og den aktuelle anbefaling øverst,
+- tænde/slukke automatisk styring og vælge strategi + prioritet,
+- følge live-tal (soloverskud, effekt til bilen, anbefalet strøm, elpris),
+- se husbatteriets ladestand,
+- redigere ladeplanen (tilladte dage + tidsrum) og eksport-pristærsklen,
+- genberegne eller ophæve en manuel pause.
+
+Siden kører 100 % lokalt (byg-frit, ingen eksterne afhængigheder) og bruger
+Home Assistants eget tema, så den følger lys/mørk visning automatisk.
+
 ## Installation gennem HACS
 
 1. HACS → ⋮ → *Custom repositories* → tilføj
