@@ -1,0 +1,248 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Solar Buddy – Energisensorer",
+        "description": "Peg Solar Buddy på din aktuelle solcelleproduktion og husets grundforbrug. Husforbrugs-sensoren må IKKE indeholde biloplader eller andre belastninger, som Solar Buddy styrer.",
+        "data": {
+          "solar_production_entity": "Solcelleproduktion effekt-sensor",
+          "house_consumption_entity": "Husets grundforbrug effekt-sensor"
+        },
+        "data_description": {
+          "solar_production_entity": "Aktuel effekt i W eller kW (ikke en akkumuleret kWh-energisensor).",
+          "house_consumption_entity": "Aktuel effekt i W eller kW, uden bilopladning og batteri-flows."
+        }
+      },
+      "battery": {
+        "title": "Solar Buddy – Hus-batteri",
+        "description": "Har du et hus-batteri, som Solar Buddy skal tage højde for?",
+        "data": {
+          "battery_enabled": "Hus-batteri til stede"
+        }
+      },
+      "battery_details": {
+        "title": "Solar Buddy – Batteridetaljer",
+        "description": "Vælg batteriets entiteter. Opladningsstatus og ladegrænse er valgfri; read-only entiteter bruges kun til overvågning.",
+        "data": {
+          "battery_soc_entity": "Batteri ladetilstand-sensor (%)",
+          "battery_power_mode": "Hvordan måles batteriets effekt?",
+          "battery_charging_enabled_entity": "Batteriopladning til/fra (status eller styring)",
+          "battery_charge_limit_entity": "Batteriets ladegrænse (status eller styring)"
+        }
+      },
+      "battery_signed": {
+        "title": "Solar Buddy – Batterieffekt (én sensor)",
+        "description": "Én sensor med positive og negative værdier. Inverter-mærker er uenige om fortegnets betydning, så fortæl Solar Buddy hvad det betyder.",
+        "data": {
+          "battery_power_entity": "Batteri effekt-sensor",
+          "battery_power_sign": "Fortegnskonvention"
+        }
+      },
+      "battery_separate": {
+        "title": "Solar Buddy – Batterieffekt (to sensorer)",
+        "description": "Separate sensorer for opladnings- og afladningseffekt (W eller kW).",
+        "data": {
+          "battery_charge_power_entity": "Batteri opladningseffekt-sensor",
+          "battery_discharge_power_entity": "Batteri afladningseffekt-sensor"
+        }
+      },
+      "ev": {
+        "title": "Solar Buddy – Biloplader",
+        "description": "Har du en biloplader, som Solar Buddy skal styre eller overvåge?",
+        "data": {
+          "ev_charger_enabled": "Biloplader til stede"
+        }
+      },
+      "ev_control": {
+        "title": "Solar Buddy – Styring af oplader",
+        "description": "Hvordan startes og stoppes opladning?",
+        "data": {
+          "ev_control_type": "Styringstype"
+        }
+      },
+      "ev_switch": {
+        "title": "Solar Buddy – Oplader-kontakt",
+        "description": "Kontakten der starter og stopper opladning.",
+        "data": {
+          "ev_charger_switch_entity": "Oplader tænd/sluk-kontakt"
+        }
+      },
+      "ev_start_stop": {
+        "title": "Solar Buddy – Start- og stop-entiteter",
+        "description": "Separate entiteter der starter og stopper opladning (button, script eller switch).",
+        "data": {
+          "ev_charger_start_entity": "Start opladning-entitet",
+          "ev_charger_stop_entity": "Stop opladning-entitet"
+        }
+      },
+      "ev_details": {
+        "title": "Solar Buddy – Bil-detaljer",
+        "description": "Strømstyrke-kontrol, kabelstatus og bilens ladetilstand. Alle felter er valgfri, men giver mere funktionalitet.",
+        "data": {
+          "ev_charger_current_entity": "Ladestrøm-kontrol (A)",
+          "ev_cable_connection_entity": "Kabelstatus",
+          "ev_connected_states": "Tilstande der betyder 'tilsluttet' (for almindelige sensorer)",
+          "ev_soc_entity": "Bilens ladetilstand-sensor (%)",
+          "ev_min_soc_entity": "Bilens minimum-ladetilstand (sensor eller number, %)"
+        },
+        "data_description": {
+          "ev_connected_states": "Uafhængig af store/små bogstaver. Bruges kun når kabelstatus er en almindelig sensor.",
+          "ev_min_soc_entity": "Når bilen er under dette niveau, prioriteres opladning — i prisbevidste strategier også fra elnettet i billige timer."
+        }
+      },
+      "price": {
+        "title": "Solar Buddy – Elpris",
+        "description": "Valgfrit: en elpris-sensor, fx fra Energi Data Service. Uden den kører Solar Buddy i ren soltilstand.",
+        "data": {
+          "electricity_price_entity": "Elpris-sensor"
+        }
+      }
+    },
+    "error": {
+      "same_entity": "Den samme entitet kan ikke bruges i begge felter.",
+      "not_a_power_sensor": "Denne entitet ligner ikke en effekt-sensor (W/kW).",
+      "energy_sensor_selected": "Dette er en akkumuleret energisensor (kWh). Vælg en effekt-sensor (W/kW) i stedet.",
+      "not_a_percentage": "Denne entitet ligner ikke en procent-sensor.",
+      "price_entity_invalid": "Denne entitet har ikke en numerisk pris som state."
+    },
+    "abort": {
+      "single_instance_allowed": "Solar Buddy er allerede konfigureret. Brug Omkonfigurér for at ændre den.",
+      "reconfigure_successful": "Solar Buddy-konfigurationen blev opdateret."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Solar Buddy – Adfærd",
+        "data": {
+          "ev_min_current": "Minimum ladestrøm",
+          "ev_max_current": "Maksimum ladestrøm",
+          "ev_current_step": "Ladestrøm-trin",
+          "ev_phases": "Opladerens faser (1 eller 3)",
+          "ev_voltage": "Netspænding",
+          "ev_start_delay": "Startforsinkelse",
+          "ev_stop_delay": "Stopforsinkelse",
+          "ev_adjustment_interval": "Interval for strømjustering",
+          "ev_power_reserve": "Effektreserve før bilopladning",
+          "battery_reserve_soc": "Batteriets reserve-SoC",
+          "battery_target_soc": "Batteriets mål-SoC",
+          "ev_target_soc": "Bilens mål-SoC",
+          "ev_battery_capacity_kwh": "Bilens batterikapacitet",
+          "ev_charging_efficiency": "Ladevirkningsgrad",
+          "ev_departure_time": "Bilens afgangstid",
+          "cheap_price_percentile": "Billig-percentil",
+          "expensive_price_percentile": "Dyr-percentil",
+          "manual_override_pause": "Pause ved manuel overstyring",
+          "minimum_command_interval": "Minimumsinterval mellem kommandoer",
+          "data_stale_timeout": "Tidsgrænse for forældede data",
+          "evaluation_interval": "Evalueringsinterval"
+        }
+      }
+    },
+    "error": {
+      "min_above_max": "Minimumstrømmen kan ikke være højere end maksimumstrømmen.",
+      "cheap_above_expensive": "Billig-percentilen skal være lavere end dyr-percentilen.",
+      "invalid_phases": "Antal faser skal være 1 eller 3.",
+      "invalid_voltage": "Spændingen skal være mellem 100 og 400 V."
+    }
+  },
+  "selector": {
+    "battery_power_mode": {
+      "options": {
+        "signed": "Én sensor med positive og negative værdier",
+        "separate": "Separate opladnings- og afladningssensorer",
+        "none": "Ingen måling af batterieffekt"
+      }
+    },
+    "battery_power_sign": {
+      "options": {
+        "positive_is_charging": "Positiv = oplader, negativ = aflader",
+        "positive_is_discharging": "Positiv = aflader, negativ = oplader"
+      }
+    },
+    "ev_control_type": {
+      "options": {
+        "switch": "Én tænd/sluk-kontakt",
+        "start_stop": "Separate start- og stop-entiteter"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "monitoring": "Overvåger",
+          "active": "Aktiv styring",
+          "waiting_for_data": "Venter på data",
+          "stale_data": "Sensordata er forældede"
+        }
+      },
+      "recommendation": {
+        "name": "Anbefaling",
+        "state": {
+          "data_not_ready": "Ingen anbefaling: sensordata er ikke klar",
+          "no_ev_configured": "Overvåger energiflow (ingen biloplader konfigureret)",
+          "ev_not_connected": "Bilopladning på pause: bilen er ikke tilsluttet",
+          "ev_target_reached": "Bilopladning færdig: mål-ladetilstand er nået",
+          "ev_charge_recommended": "Bilopladning anbefales med soloverskud",
+          "grid_charge_cheap": "Netopladning anbefales: bilen er under minimum og prisen er billig",
+          "ev_blocked_expensive": "Bilopladning undgås: elprisen er dyr",
+          "no_surplus": "Intet soloverskud til rådighed",
+          "surplus_below_minimum": "Soloverskuddet er under minimums-ladeeffekten"
+        }
+      },
+      "solar_surplus": { "name": "Soloverskud" },
+      "available_ev_power": { "name": "Tilgængelig EV-effekt" },
+      "recommended_ev_current": { "name": "Anbefalet ladestrøm" },
+      "current_price": { "name": "Aktuel elpris" },
+      "price_level": {
+        "name": "Prisniveau",
+        "state": {
+          "very_cheap": "Meget billig",
+          "cheap": "Billig",
+          "normal": "Normal",
+          "expensive": "Dyr",
+          "very_expensive": "Meget dyr",
+          "unknown": "Ukendt"
+        }
+      },
+      "next_action": { "name": "Næste handling" },
+      "last_evaluation": { "name": "Seneste evaluering" },
+      "last_command": { "name": "Seneste kommando" }
+    },
+    "binary_sensor": {
+      "data_ready": { "name": "Data klar" },
+      "solar_surplus_available": { "name": "Soloverskud til rådighed" },
+      "ev_connected": { "name": "Bil tilsluttet" },
+      "automatic_control_available": { "name": "Automatisk styring mulig" },
+      "manual_override": { "name": "Manuel overstyring" }
+    },
+    "switch": {
+      "automatic_control": { "name": "Automatisk styring" }
+    },
+    "select": {
+      "strategy": {
+        "name": "Strategi",
+        "state": {
+          "solar_only": "Kun sol",
+          "price_aware": "Prisbevidst",
+          "balanced": "Balanceret",
+          "monitor_only": "Kun overvågning"
+        }
+      },
+      "priority": {
+        "name": "Prioritet",
+        "state": {
+          "battery_first": "Batteri først",
+          "ev_first": "Bil først",
+          "balanced": "Balanceret"
+        }
+      }
+    },
+    "button": {
+      "recalculate": { "name": "Genberegn" },
+      "clear_manual_override": { "name": "Ryd manuel overstyring" }
+    }
+  }
+}
