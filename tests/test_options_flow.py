@@ -7,11 +7,11 @@ from homeassistant.data_entry_flow import FlowResultType
 
 from custom_components.solar_buddy.const import (
     CONF_BATTERY_RESERVE_SOC,
-    CONF_EV_ALLOWED_DAYS,
     CONF_BATTERY_TARGET_SOC,
     CONF_CHEAP_PRICE_PERCENTILE,
     CONF_DATA_STALE_TIMEOUT,
     CONF_EV_ADJUSTMENT_INTERVAL,
+    CONF_EV_ALLOWED_DAYS,
     CONF_EV_CHARGING_EFFICIENCY,
     CONF_EV_CURRENT_STEP,
     CONF_EV_MAX_CURRENT,
